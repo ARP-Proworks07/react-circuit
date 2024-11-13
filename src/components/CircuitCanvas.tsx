@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
-import { Save, Download, Trash2, Grid, Undo2, Redo2 } from 'lucide-react';
+import { Save, Download, Trash2, Grid, Undo2, Redo2, FileDown } from 'lucide-react';
 import { useCircuitStore } from '../store/circuitStore';
 import { CircuitComponent, Point, GRID_SIZE } from '../types/Circuit';
 import { Resistor } from './circuit/Resistor';
@@ -15,6 +15,8 @@ import { Switch } from './circuit/Switch';
 import { ValueEditor } from './circuit/ValueEditor';
 import { ValidationPanel } from './ValidationPanel';
 import { Wire } from './circuit/Wire';
+import Bulb from './circuit/Bulb';
+import html2canvas from 'html2canvas';
 
 
 const CircuitCanvas: React.FC = () => {
@@ -49,6 +51,24 @@ const CircuitCanvas: React.FC = () => {
     redo,
   } = useCircuitStore();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [editingValue, setEditingValue] = useState<{
+    id: string;
+    value: string;
+  } | null>(null);
+
+  const handleValueEdit = (componentId: string, currentValue: string) => {
+    setEditingValue({ id: componentId, value: currentValue });
+  };
+
+  const handleValueSave = (newValue: string) => {
+    if (editingValue) {
+      updateComponent(editingValue.id, { value: newValue });
+      setEditingValue(null);
+    }
+  };
+
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (!svgRef.current) return;
 
@@ -77,6 +97,11 @@ const CircuitCanvas: React.FC = () => {
   }, [draggingWire, cancelWire]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    // Only deselect if clicking directly on the canvas background
+    if (e.target === e.currentTarget) {
+      selectComponent(null);
+    }
+    
     if (!svgRef.current || !wireMode) return;
     
     const svg = svgRef.current;
@@ -91,7 +116,7 @@ const CircuitCanvas: React.FC = () => {
     };
 
     addWirePoint(snappedPoint);
-  }, [wireMode, addWirePoint]);
+  }, [wireMode, addWirePoint, selectComponent]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
@@ -161,6 +186,7 @@ const CircuitCanvas: React.FC = () => {
   };
 
   const handleComponentDrag = useCallback((id: string, newPosition: Point) => {
+    // Simplified - just update the component position
     updateComponent(id, { position: newPosition });
   }, [updateComponent]);
 
@@ -173,7 +199,7 @@ const CircuitCanvas: React.FC = () => {
       value: component.value,
       isSelected: selectedComponent === component.id,
       onSelect: () => selectComponent(component.id),
-      onDoubleClick: () => {}, // Handle value editing
+      onDoubleClick: () => handleValueEdit(component.id, component.value || ''),
       onDelete: () => deleteComponent(component.id),
       onRotate: () => rotateComponent(component.id),
       onStartWire: (terminal: Point) => startWire(component.id, terminal),
@@ -200,18 +226,61 @@ const CircuitCanvas: React.FC = () => {
         return <LED key={component.id} {...commonProps} />;
       case 'switch':
         return <Switch key={component.id} {...commonProps} />;
+      case 'bulb':
+        return <Bulb key={component.id} {...commonProps} />;
       default:
         console.warn(`Unknown component type: ${component.type}`);
         return null;
     }
   };
 
-  const handleWireSelect = useCallback((wireId: string) => {
-    toggleWireSelect(wireId);
-  }, [toggleWireSelect]);
+  const handleLoadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        loadDesign(file);
+        // Reset the file input value so the same file can be loaded again
+        e.target.value = '';
+    }
+  };
+
+  const handleExport = async () => {
+    const circuitContainer = document.querySelector('.circuit-container');
+    if (circuitContainer) {
+        try {
+            const canvas = await html2canvas(circuitContainer as HTMLElement, {
+                backgroundColor: 'white',
+                scale: 2, // Higher resolution
+                logging: false,
+            });
+
+            // Convert to PNG and download
+            const dataUrl = canvas.toDataURL('image/png');
+            const downloadLink = document.createElement('a');
+            downloadLink.href = dataUrl;
+            downloadLink.download = `circuit-${new Date().toISOString().slice(0,10)}.png`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        } catch (error) {
+            console.error('Error exporting circuit:', error);
+        }
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".json"
+        className="hidden"
+      />
+      
       <div className="bg-white p-4 shadow-sm border-b flex justify-between items-center">
         <h2 className="text-xl font-semibold">Circuit Designer</h2>
         <div className="flex gap-2">
@@ -250,10 +319,16 @@ const CircuitCanvas: React.FC = () => {
             <Save size={18} /> Save
           </button>
           <button
-            onClick={loadDesign}
+            onClick={handleLoadClick}
             className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             <Download size={18} /> Load
+          </button>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            <FileDown size={18} /> Export
           </button>
           <button
             onClick={clearDesign}
@@ -265,7 +340,7 @@ const CircuitCanvas: React.FC = () => {
       </div>
       
       <div className="flex-1 bg-gray-50 p-4 relative">
-        <div className="bg-white rounded-lg shadow-lg h-full p-4">
+        <div className="circuit-container bg-white rounded-lg shadow-lg h-full p-4">
           <svg
             ref={svgRef}
             width="100%"
@@ -282,9 +357,10 @@ const CircuitCanvas: React.FC = () => {
               {currentDesign.wires.map((wire) => (
                 <Wire
                   key={wire.id}
+                  id={wire.id}
                   points={wire.points}
                   isSelected={selectedWire === wire.id}
-                  onSelect={() => handleWireSelect(wire.id)}
+                  onSelect={() => toggleWireSelect(wire.id)}
                 />
               ))}
               {currentDesign.components.map(renderComponent)}
@@ -305,6 +381,41 @@ const CircuitCanvas: React.FC = () => {
         </div>
         <ValidationPanel />
       </div>
+      
+      {editingValue && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-lg shadow-lg">
+            <input
+              type="text"
+              value={editingValue.value}
+              onChange={(e) => setEditingValue({ ...editingValue, value: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleValueSave(editingValue.value);
+                } else if (e.key === 'Escape') {
+                  setEditingValue(null);
+                }
+              }}
+              className="border p-2 rounded"
+              autoFocus
+            />
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => handleValueSave(editingValue.value)}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setEditingValue(null)}
+                className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

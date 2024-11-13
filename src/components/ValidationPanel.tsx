@@ -1,15 +1,34 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useCircuitStore } from '../store/circuitStore';
 import { AlertTriangle, XCircle } from 'lucide-react';
 
 export const ValidationPanel: React.FC = () => {
-  const { validationErrors } = useCircuitStore();
+  const { validationErrors, clearValidation } = useCircuitStore();
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        clearValidation();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [clearValidation]);
 
   if (!validationErrors.length) return null;
- 
+
   return (
-    <div className="absolute bottom-4 right-4 w-80 bg-white rounded-lg shadow-lg p-4">
-      <h3 className="text-lg font-semibold mb-2">Circuit Validation</h3>
+    <div 
+      ref={panelRef}
+      className="absolute bottom-4 right-4 w-80 bg-white rounded-lg shadow-lg p-4"
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-lg font-semibold">Circuit Validation</h3>
+      </div>
       <div className="space-y-2">
         {validationErrors.map((error, index) => (
           <div

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import React, { useState, useEffect, SVGProps } from 'react';
+import React, { useState, useEffect, SVGProps, useRef, useCallback } from 'react';
 import { Point, GRID_SIZE } from '../../types/Circuit';
 import { useCircuitStore } from '../../store/circuitStore';
 import { Trash2, RotateCw, RotateCcw } from 'lucide-react';
@@ -44,61 +44,83 @@ export const BaseComponent: React.FC<BaseComponentProps & { children: React.Reac
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const updateComponent = useCircuitStore(state => state.updateComponent);
+  const initialMouseRef = useRef<Point | null>(null);
+  const initialPositionRef = useRef<Point | null>(null);
   const draggingWire = useCircuitStore(state => state.draggingWire);
 
-  // Add cursor styles
-  const cursorStyle = isDragging 
-    ? 'cursor-grabbing' 
-    : isSelected 
-    ? 'cursor-grab' 
-    : 'cursor-move';
+  const getMousePosition = (e: MouseEvent | React.MouseEvent): Point | null => {
+    const svg = document.querySelector('svg');
+    if (!svg) return null;
 
-  // Add hover effect class
-  const hoverClass = !isDragging ? 'hover:opacity-80' : '';
-
-  useEffect(() => {
-    if (isDragging) {
-      const handleGlobalMouseMove = (e: MouseEvent) => {
-        const svg = document.querySelector('svg');
-        if (!svg) return;
-
-        const pt = svg.createSVGPoint();
-        pt.x = e.clientX;
-        pt.y = e.clientY;
-        const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
-
-        // Directly use cursor position for component position, 
-        // but maintain grid snapping
-        const newPosition = {
-          x: Math.round(svgP.x / GRID_SIZE) * GRID_SIZE,
-          y: Math.round(svgP.y / GRID_SIZE) * GRID_SIZE
-        };
-
-        updateComponent(id, { position: newPosition });
-      };
-
-      const handleGlobalMouseUp = () => {
-        setIsDragging(false);
-        document.body.style.cursor = 'default';
-      };
-
-      document.body.style.cursor = 'grabbing';
-      window.addEventListener('mousemove', handleGlobalMouseMove);
-      window.addEventListener('mouseup', handleGlobalMouseUp);
-
-      return () => {
-        window.removeEventListener('mousemove', handleGlobalMouseMove);
-        window.removeEventListener('mouseup', handleGlobalMouseUp);
-      };
-    }
-  }, [isDragging, id, updateComponent]);
+    const point = svg.createSVGPoint();
+    point.x = e.clientX;
+    point.y = e.clientY;
+    
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    
+    return point.matrixTransform(ctm.inverse());
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0) return; //only responsible for left clicks
     e.stopPropagation();
+
+    const mousePos = getMousePosition(e);
+    if (!mousePos) return;
+
+    // Store initial positions
+    initialMouseRef.current = mousePos;
+    initialPositionRef.current = { x, y };
+
     setIsDragging(true);
     onSelect();
   };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const currentMouse = getMousePosition(e);
+      if (!currentMouse || !initialMouseRef.current || !initialPositionRef.current) return;
+
+      // Calculate the delta from initial positions
+      const dx = currentMouse.x - initialMouseRef.current.x;
+      const dy = currentMouse.y - initialMouseRef.current.y;
+
+      // Apply delta to initial component position
+      const newPosition: Point = {
+        x: initialPositionRef.current.x + dx,
+        y: initialPositionRef.current.y + dy
+      };
+
+      updateComponent(id, { position: newPosition });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      // Snap to grid after dragging ends
+      if (initialPositionRef.current) {
+        const snappedPosition: Point = {
+          x: Math.round(initialPositionRef.current.x / GRID_SIZE) * GRID_SIZE,
+          y: Math.round(initialPositionRef.current.y / GRID_SIZE) * GRID_SIZE
+        };
+
+    // Update component with the snapped position
+    updateComponent(id, { position: snappedPosition });
+  }
+      initialMouseRef.current = null;
+      initialPositionRef.current = null;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, id, updateComponent]);
 
   const handleTerminalMouseDown = (e: React.MouseEvent<SVGCircleElement, MouseEvent>, terminal: Point) => {
     e.stopPropagation();
@@ -122,7 +144,6 @@ export const BaseComponent: React.FC<BaseComponentProps & { children: React.Reac
     }
   };
 
-  // First, let's modify the transform calculation to separate translation and rotation
   const transformValue = `translate(${x}, ${y})`;
 
   return (
@@ -133,7 +154,7 @@ export const BaseComponent: React.FC<BaseComponentProps & { children: React.Reac
         e.stopPropagation();
         onDoubleClick();
       }}
-      className={`${cursorStyle} transition-transform duration-150 ease-out ${hoverClass}`}
+      className={`cursor-grab ${isDragging ? 'cursor-grabbing' : ''} transition-transform duration-150 ease-out hover:opacity-80`}
     >
       <g transform={`rotate(${rotation})`} className="component-body">
         {React.Children.map(children, child => {

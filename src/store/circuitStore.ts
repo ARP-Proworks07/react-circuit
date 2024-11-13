@@ -32,6 +32,7 @@ interface CircuitState {
       wires: Wire[];
     }>;
   };
+  activeComponents: Set<string>;
 
   // Actions
   selectComponent: (id: string | null) => void;
@@ -45,7 +46,7 @@ interface CircuitState {
   cancelWire: () => void;
   toggleGrid: () => void;
   saveDesign: () => void;
-  loadDesign: () => void;
+  loadDesign: (file: File) => Promise<void>;
   clearDesign: () => void;
   validateCircuit: () => void;
   toggleWireMode: () => void;
@@ -55,6 +56,11 @@ interface CircuitState {
   saveToHistory: () => void;
   undo: () => void;
   redo: () => void;
+  setComponentActive: (id: string, active: boolean) => void;
+  simulateCircuit: () => void;
+  deleteWire: (id: string) => void;
+  getCircuitJson: () => string;
+  clearValidation: () => void;
 }
 
 export const useCircuitStore = create<CircuitState>((set, get) => ({
@@ -74,6 +80,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     past: [],
     future: []
   },
+  activeComponents: new Set(),
 
   selectComponent: (id) => set({ selectedComponent: id }),
   
@@ -205,18 +212,88 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
 
   saveDesign: () => {
-    const state = get();
-    const design = JSON.stringify(state.currentDesign);
-    localStorage.setItem('circuit-design', design);
+    const jsonString = get().getCircuitJson();
+    
+    // Create blob and download link
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create temporary download link
+    const downloadLink = document.createElement('a');
+    downloadLink.href = url;
+    downloadLink.download = `circuit-design-${new Date().toISOString().slice(0,10)}.json`;
+    
+    // Trigger download
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    
+    // Cleanup
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(url);
   },
 
-  loadDesign: () => {
-    const design = localStorage.getItem('circuit-design');
-    if (design) {
-      set({ 
-        currentDesign: JSON.parse(design),
+  loadDesign: async (file: File) => {
+    try {
+      const text = await file.text();
+      const design = JSON.parse(text);
+
+      // Validate the design structure
+      if (!design.components || !design.wires || !Array.isArray(design.components) || !Array.isArray(design.wires)) {
+        throw new Error('Invalid circuit design file format');
+      }
+
+      // Save current state to history before loading
+      get().saveToHistory();
+
+      // Create a mapping of old component IDs to new ones
+      const idMapping = new Map<string, string>();
+      const timestamp = Date.now();
+      
+      // Generate new components with new IDs
+      const newComponents = design.components.map((comp: CircuitComponent, index: number) => {
+        const newId = `${comp.type}-${timestamp}-${index}-${Math.random().toString(36).substr(2, 9)}`;
+        idMapping.set(comp.id, newId);
+        return {
+          ...comp,
+          id: newId
+        };
+      });
+
+      // Update wire points with new component IDs
+      const newWires = design.wires.map((wire: Wire, index: number) => ({
+        ...wire,
+        id: `wire-${timestamp}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+        points: wire.points.map(point => ({
+          ...point,
+          componentId: point.componentId ? idMapping.get(point.componentId) : undefined,
+          x: Math.round(point.x / GRID_SIZE) * GRID_SIZE,
+          y: Math.round(point.y / GRID_SIZE) * GRID_SIZE
+        }))
+      }));
+
+      // Clear the current design and set the new one
+      set({
+        currentDesign: {
+          components: newComponents,
+          wires: newWires
+        },
         selectedComponent: null,
         draggingWire: null,
+        wireMode: false,
+        wirePoints: [],
+        selectedWire: null,
+        isDrawing: false,
+        validationErrors: [],
+        activeComponents: new Set()
+      });
+
+    } catch (error) {
+      console.error('Error loading design:', error);
+      set({
+        validationErrors: [{
+          type: 'error',
+          message: 'Failed to load circuit design file'
+        }]
       });
     }
   },
@@ -366,4 +443,131 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       }
     }));
   },
+
+  setComponentActive: (id, active) => set(state => ({
+    activeComponents: active 
+      ? new Set(state.activeComponents).add(id)
+      : new Set([...state.activeComponents].filter(x => x !== id))
+  })),
+
+  simulateCircuit: () => {
+    const state = get();
+    const { components, wires } = state.currentDesign;
+    
+    // Reset all active components
+    const activeComponents = new Set<string>();
+    
+    // Find voltage sources and grounds
+    const voltageSources = components.filter(c => c.type === 'voltage_source');
+    const grounds = components.filter(c => c.type === 'ground');
+    
+    // Circuit needs both voltage source and ground to work
+    if (voltageSources.length === 0) {
+      set({ 
+        validationErrors: [{
+          type: 'error',
+          message: 'Circuit needs at least one voltage source'
+        }]
+      });
+      return;
+    }
+
+    if (grounds.length === 0) {
+      set({ 
+        validationErrors: [{
+          type: 'error',
+          message: 'Circuit needs at least one ground connection'
+        }]
+      });
+      return;
+    }
+
+    // For each voltage source, find connected components
+    voltageSources.forEach(source => {
+      // Find all components connected to this voltage source
+      const connectedComponents = findConnectedComponents(source.id, components, wires);
+      
+      // Check if there's a path to ground
+      const hasGroundPath = connectedComponents.some(id => 
+        components.find(c => c.id === id)?.type === 'ground'
+      );
+
+      if (hasGroundPath) {
+        // If there's a path to ground, activate all components in the path
+        connectedComponents.forEach(id => {
+          activeComponents.add(id);
+          // Find the component
+          const component = components.find(c => c.id === id);
+          if (component?.type === 'bulb' || component?.type === 'led') {
+            activeComponents.add(id);
+          }
+        });
+      }
+    });
+    
+    // Update the store with active components
+    set({ 
+      activeComponents,
+      validationErrors: activeComponents.size === 0 ? [{
+        type: 'warning',
+        message: 'No complete circuit path found between voltage source and ground'
+      }] : []
+    });
+  },
+
+  deleteWire: (id) => {
+    get().saveToHistory();
+    set((state) => ({
+      currentDesign: {
+        ...state.currentDesign,
+        wires: state.currentDesign.wires.filter((w) => w.id !== id),
+      },
+      selectedWire: null,
+    }));
+  },
+
+  getCircuitJson: () => {
+    const state = get();
+    const design = {
+      components: state.currentDesign.components,
+      wires: state.currentDesign.wires,
+      version: "1.0"
+    };
+    
+    return JSON.stringify(design, null, 2);
+  },
+
+  clearValidation: () => set({ validationErrors: [] }),
 }));
+
+// Helper function to find connected components
+function findConnectedComponents(
+  startId: string, 
+  components: CircuitComponent[], 
+  wires: Wire[]
+): string[] {
+  const visited = new Set<string>();
+  const queue = [startId];
+  
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    if (visited.has(currentId)) continue;
+    visited.add(currentId);
+    
+    // Find all wires connected to this component
+    const connectedWires = wires.filter(w => 
+      w.points.some(p => p.componentId === currentId)
+    );
+    
+    // Find components connected through these wires
+    connectedWires.forEach(wire => {
+      wire.points.forEach(point => {
+        if (point.componentId && !visited.has(point.componentId)) {
+          queue.push(point.componentId);
+        }
+      });
+    });
+  }
+  
+  return Array.from(visited);
+}

@@ -13,7 +13,8 @@ export type ComponentType =
   | 'diode'
   | 'transistor'
   | 'led'
-  | 'switch';
+  | 'switch'
+  | 'bulb';
 
 export interface CircuitComponent {
   id: string;

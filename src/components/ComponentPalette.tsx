@@ -9,13 +9,23 @@ import {
   Radio, 
   ToggleLeft,
   Lightbulb,
-  GitBranch
+  GitBranch,
+  Lamp
 } from 'lucide-react';
+import { ComponentType } from '../types/Circuit';
+import { LucideIcon } from 'lucide-react';
+
+interface ComponentItem {
+  type: ComponentType;
+  icon: LucideIcon;
+  label: string;
+  defaultValue?: string;
+}
 
 const ComponentPalette: React.FC = () => {
   const { addComponent, toggleWireMode, wireMode } = useCircuitStore();
 
-  const components = [
+  const components: ComponentItem[] = [
     { type: 'resistor', icon: Hash, label: 'Resistor', defaultValue: '1kΩ' },
     { type: 'capacitor', icon: Circle, label: 'Capacitor', defaultValue: '1µF' },
     { type: 'inductor', icon: Codesandbox, label: 'Inductor', defaultValue: '1mH' },
@@ -25,11 +35,14 @@ const ComponentPalette: React.FC = () => {
     { type: 'transistor', icon: Radio, label: 'Transistor', defaultValue: 'NPN' },
     { type: 'led', icon: Lightbulb, label: 'LED' },
     { type: 'switch', icon: ToggleLeft, label: 'Switch' },
+    { type: 'bulb', icon: Lamp, label: 'Bulb' },
   ];
- 
+
   return (
     <div className="w-64 bg-white border-r p-4">
-      <h3 className="text-lg font-semibold mb-4">Components</h3>
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold">Components</h3>
+      </div>
       <div className="space-y-2">
         {/* Wire Tool button */}
         <button
