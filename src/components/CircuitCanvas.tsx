@@ -20,6 +20,7 @@ import html2canvas from 'html2canvas';
 
 
 const CircuitCanvas: React.FC = () => {
+  // SVG reference for coordinate transformation
   const svgRef = useRef<SVGSVGElement>(null);
   const [mousePosition, setMousePosition] = useState<Point | null>(null);
   const {
@@ -190,6 +191,7 @@ const CircuitCanvas: React.FC = () => {
     updateComponent(id, { position: newPosition });
   }, [updateComponent]);
 
+  // Component rendering with position
   const renderComponent = (component: CircuitComponent) => {
     const commonProps = {
       id: component.id,
@@ -204,7 +206,7 @@ const CircuitCanvas: React.FC = () => {
       onRotate: () => rotateComponent(component.id),
       onStartWire: (terminal: Point) => startWire(component.id, terminal),
       onCompleteWire: (terminal: Point) => completeWire(component.id, terminal),
-      onDrag: (newPosition: Point) => handleComponentDrag(component.id, newPosition),
+      onDrag: (newPosition: Point) => updateComponent(component.id, { position: newPosition })
     };
 
     switch (component.type) {
@@ -212,10 +214,10 @@ const CircuitCanvas: React.FC = () => {
         return <Resistor key={component.id} {...commonProps} />;
       case 'capacitor':
         return <Capacitor key={component.id} {...commonProps} />;
-      case 'voltage_source':
-        return <VoltageSource key={component.id} {...commonProps} />;
       case 'inductor':
         return <Inductor key={component.id} {...commonProps} />;
+      case 'voltage_source':
+        return <VoltageSource key={component.id} {...commonProps} />;
       case 'ground':
         return <Ground key={component.id} {...commonProps} />;
       case 'diode':

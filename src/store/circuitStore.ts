@@ -108,6 +108,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     }));
   },
 
+  // Action to update component position
   updateComponent: (id, updates) => {
     set((state) => ({
       currentDesign: {
@@ -117,18 +118,14 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
             ? {
                 ...component,
                 ...updates,
-                // Use GRID_SIZE constant instead of magic number
-                position: updates.position
-                  ? {
-                      x: Math.round(updates.position.x / GRID_SIZE) * GRID_SIZE,
-                      y: Math.round(updates.position.y / GRID_SIZE) * GRID_SIZE,
-                    }
-                  : component.position,
+                position: updates.position || component.position,
               }
             : component
         ),
       },
     }));
+    // Save to history after updating
+    get().saveToHistory();
   },
 
   deleteComponent: (id) => {

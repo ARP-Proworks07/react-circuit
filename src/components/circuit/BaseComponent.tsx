@@ -42,12 +42,13 @@ export const BaseComponent: React.FC<BaseComponentProps & { children: React.Reac
   onCompleteWire,
   children,
 }) => {
-  const [isDragging, setIsDragging] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);  // State and refs for dragging
   const updateComponent = useCircuitStore(state => state.updateComponent);
   const initialMouseRef = useRef<Point | null>(null);
   const initialPositionRef = useRef<Point | null>(null);
   const draggingWire = useCircuitStore(state => state.draggingWire);
 
+  // Mouse position calculation
   const getMousePosition = (e: MouseEvent | React.MouseEvent): Point | null => {
     const svg = document.querySelector('svg');
     if (!svg) return null;
@@ -62,6 +63,7 @@ export const BaseComponent: React.FC<BaseComponentProps & { children: React.Reac
     return point.matrixTransform(ctm.inverse());
   };
 
+  // Start dragging
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; //only responsible for left clicks
     e.stopPropagation();
@@ -77,6 +79,7 @@ export const BaseComponent: React.FC<BaseComponentProps & { children: React.Reac
     onSelect();
   };
 
+  // Dragging effect
   useEffect(() => {
     if (!isDragging) return;
 
@@ -84,31 +87,23 @@ export const BaseComponent: React.FC<BaseComponentProps & { children: React.Reac
       const currentMouse = getMousePosition(e);
       if (!currentMouse || !initialMouseRef.current || !initialPositionRef.current) return;
 
-      // Calculate the delta from initial positions
-      const dx = currentMouse.x - initialMouseRef.current.x;
-      const dy = currentMouse.y - initialMouseRef.current.y;
+      // Calculate the offset from where the user initially clicked on the component
+      const offsetX = currentMouse.x - initialMouseRef.current.x;
+      const offsetY = currentMouse.y - initialMouseRef.current.y;
 
-      // Apply delta to initial component position
+      // Apply the offset to the initial position
       const newPosition: Point = {
-        x: initialPositionRef.current.x + dx,
-        y: initialPositionRef.current.y + dy
+        x: Math.round((initialPositionRef.current.x + offsetX) / GRID_SIZE) * GRID_SIZE,
+        y: Math.round((initialPositionRef.current.y + offsetY) / GRID_SIZE) * GRID_SIZE
       };
 
+      // Update component position
       updateComponent(id, { position: newPosition });
     };
 
+    // End dragging
     const handleMouseUp = () => {
       setIsDragging(false);
-      // Snap to grid after dragging ends
-      if (initialPositionRef.current) {
-        const snappedPosition: Point = {
-          x: Math.round(initialPositionRef.current.x / GRID_SIZE) * GRID_SIZE,
-          y: Math.round(initialPositionRef.current.y / GRID_SIZE) * GRID_SIZE
-        };
-
-    // Update component with the snapped position
-    updateComponent(id, { position: snappedPosition });
-  }
       initialMouseRef.current = null;
       initialPositionRef.current = null;
     };
