@@ -199,6 +199,7 @@ const CircuitCanvas: React.FC = () => {
     return <g className="grid">{gridLines}</g>;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleComponentDrag = useCallback((id: string, newPosition: Point) => {
     // Simplified - just update the component position
     updateComponent(id, { position: newPosition });
