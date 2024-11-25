@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
-import { Save, Download, Trash2, Grid, Undo2, Redo2, FileDown } from 'lucide-react';
+import { Save, Download, Trash2, Grid, Undo2, Redo2, FileDown, Scissors } from 'lucide-react';
 import { useCircuitStore } from '../store/circuitStore';
 import { CircuitComponent, Point, GRID_SIZE } from '../types/Circuit';
 import { Resistor } from './circuit/Resistor';
@@ -50,6 +50,13 @@ const CircuitCanvas: React.FC = () => {
     isDrawing,
     undo,
     redo,
+    isSnipping,
+    snipStart,
+    snipEnd,
+    toggleSnippingMode,
+    setSnipStart,
+    setSnipEnd,
+    captureSnip,
   } = useCircuitStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,6 +64,12 @@ const CircuitCanvas: React.FC = () => {
   const [editingValue, setEditingValue] = useState<{
     id: string;
     value: string;
+  } | null>(null);
+
+  const [snipPreview, setSnipPreview] = useState<{
+    svgData: string;
+    width: number;
+    height: number;
   } | null>(null);
 
   const handleValueEdit = (componentId: string, currentValue: string) => {
@@ -273,6 +286,83 @@ const CircuitCanvas: React.FC = () => {
     }
   };
 
+  // Add snipping tool mouse handlers
+  const handleSnippingMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (!isSnipping || !svgRef.current) return;
+    
+    const svg = svgRef.current;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+    
+    const snappedPoint = {
+      x: Math.round(svgP.x / GRID_SIZE) * GRID_SIZE,
+      y: Math.round(svgP.y / GRID_SIZE) * GRID_SIZE,
+    };
+    
+    setSnipStart(snappedPoint);
+    setSnipEnd(snappedPoint); // Initialize end point to start point
+  }, [isSnipping, setSnipStart, setSnipEnd]);
+
+  const handleSnippingMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (!isSnipping || !snipStart || !svgRef.current) return;
+    
+    const svg = svgRef.current;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+    
+    const snappedPoint = {
+      x: Math.round(svgP.x / GRID_SIZE) * GRID_SIZE,
+      y: Math.round(svgP.y / GRID_SIZE) * GRID_SIZE,
+    };
+    
+    setSnipEnd(snappedPoint);
+    e.preventDefault(); // Prevent text selection while dragging
+  }, [isSnipping, snipStart, setSnipEnd]);
+
+  const handleSnippingMouseUp = useCallback(() => {
+    if (!isSnipping || !snipStart || !snipEnd || !svgRef.current) return;
+    
+    const svg = svgRef.current;
+    try {
+      // Create preview SVG with only the selected area
+      const newSvg = svg.cloneNode(true) as SVGElement;
+      const x = Math.min(snipStart.x, snipEnd.x);
+      const y = Math.min(snipStart.y, snipEnd.y);
+      const width = Math.abs(snipEnd.x - snipStart.x);
+      const height = Math.abs(snipEnd.y - snipStart.y);
+
+      // Update viewBox to show only the selected area
+      newSvg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
+      newSvg.setAttribute('width', width.toString());
+      newSvg.setAttribute('height', height.toString());
+
+      // Remove the selection overlay
+      const overlay = newSvg.querySelector('rect[fill="rgba(0, 0, 0, 0.3)"]');
+      const selectionRect = newSvg.querySelector('rect[stroke="#2563eb"]');
+      if (overlay) overlay.remove();
+      if (selectionRect) selectionRect.remove();
+
+      // Convert SVG to string
+      const svgData = new XMLSerializer().serializeToString(newSvg);
+      
+      // Set preview data
+      setSnipPreview({ svgData, width, height });
+      
+      // Reset snipping mode but keep the preview
+      useCircuitStore.setState({
+        isSnipping: false,
+        snipStart: null,
+        snipEnd: null
+      });
+    } catch (error) {
+      console.error('Error creating snip preview:', error);
+    }
+  }, [isSnipping, snipStart, snipEnd]);
+
   return (
     <div className="flex flex-col h-full">
       <input
@@ -338,6 +428,15 @@ const CircuitCanvas: React.FC = () => {
           >
             <Trash2 size={18} /> Clear
           </button>
+          <button
+            onClick={toggleSnippingMode}
+            className={`flex items-center gap-2 px-3 py-2 ${
+              isSnipping ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            } rounded hover:bg-opacity-90`}
+            title="Snipping Tool"
+          >
+            <Scissors size={18} /> Snip
+          </button>
         </div>
       </div>
       
@@ -348,11 +447,14 @@ const CircuitCanvas: React.FC = () => {
             width="100%"
             height="100%"
             viewBox="0 0 800 600"
-            className={`border border-gray-200 ${wireMode ? 'cursor-crosshair' : ''}`}
-            onMouseMove={handleCanvasMouseMove}
-            onMouseUp={handleCanvasMouseUp}
-            onMouseLeave={handleCanvasMouseUp}
+            className={`border border-gray-200 ${
+              isSnipping ? 'cursor-crosshair' : wireMode ? 'cursor-crosshair' : ''
+            }`}
+            onMouseDown={handleSnippingMouseDown}
+            onMouseMove={handleSnippingMouseMove}
+            onMouseUp={handleSnippingMouseUp}
             onClick={handleCanvasClick}
+            style={{ cursor: isSnipping ? 'crosshair' : 'default' }}
           >
             {renderGrid()}
             <g>
@@ -379,6 +481,36 @@ const CircuitCanvas: React.FC = () => {
                 />
               )}
             </g>
+            
+            {/* Snipping selection overlay */}
+            {isSnipping && (
+              <>
+                {/* Dark overlay for entire canvas */}
+                <rect
+                  x={0}
+                  y={0}
+                  width="100%"
+                  height="100%"
+                  fill="rgba(0, 0, 0, 0.3)"
+                  style={{ pointerEvents: 'none' }}
+                />
+                
+                {/* Selection area - only show when dragging */}
+                {snipStart && snipEnd && (
+                  <rect
+                    x={Math.min(snipStart.x, snipEnd.x)}
+                    y={Math.min(snipStart.y, snipEnd.y)}
+                    width={Math.abs(snipEnd.x - snipStart.x)}
+                    height={Math.abs(snipEnd.y - snipStart.y)}
+                    fill="rgba(37, 99, 235, 0.2)"
+                    stroke="#2563eb"
+                    strokeWidth="2"
+                    strokeDasharray="4"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                )}
+              </>
+            )}
           </svg>
         </div>
         <ValidationPanel />
@@ -416,6 +548,45 @@ const CircuitCanvas: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {snipPreview && (
+        <div className="absolute bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg">
+          <div className="mb-2">
+            <div 
+              dangerouslySetInnerHTML={{ __html: snipPreview.svgData }} 
+              style={{ 
+                width: Math.min(200, snipPreview.width), 
+                height: Math.min(150, snipPreview.height),
+                border: '1px solid #e5e7eb'
+              }}
+            />
+          </div>
+          <button
+            onClick={() => {
+              try {
+                const svgBlob = new Blob([snipPreview.svgData], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `circuit-snip-${new Date().toISOString().slice(0,19)}.svg`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                // Clear preview after download
+                setSnipPreview(null);
+              } catch (error) {
+                console.error('Error downloading snip:', error);
+              }
+            }}
+            className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            <FileDown size={16} />
+            Download Snip
+          </button>
         </div>
       )}
     </div>

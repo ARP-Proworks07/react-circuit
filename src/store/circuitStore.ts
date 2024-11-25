@@ -33,6 +33,9 @@ interface CircuitState {
     }>;
   };
   activeComponents: Set<string>;
+  isSnipping: boolean;
+  snipStart: Point | null;
+  snipEnd: Point | null;
 
   // Actions
   selectComponent: (id: string | null) => void;
@@ -61,6 +64,10 @@ interface CircuitState {
   deleteWire: (id: string) => void;
   getCircuitJson: () => string;
   clearValidation: () => void;
+  toggleSnippingMode: () => void;
+  setSnipStart: (point: Point | null) => void;
+  setSnipEnd: (point: Point | null) => void;
+  captureSnip: () => void;
 }
 
 export const useCircuitStore = create<CircuitState>((set, get) => ({
@@ -81,6 +88,9 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     future: []
   },
   activeComponents: new Set(),
+  isSnipping: false,
+  snipStart: null,
+  snipEnd: null,
 
   selectComponent: (id) => set({ selectedComponent: id }),
   
@@ -535,6 +545,70 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   },
 
   clearValidation: () => set({ validationErrors: [] }),
+
+  toggleSnippingMode: () => set(state => ({ 
+    isSnipping: !state.isSnipping,
+    snipStart: null,
+    snipEnd: null,
+    wireMode: false, // Disable wire mode when snipping
+  })),
+
+  setSnipStart: (point) => set({ snipStart: point }),
+  
+  setSnipEnd: (point) => set({ snipEnd: point }),
+
+  captureSnip: async () => {
+    const state = get();
+    if (!state.snipStart || !state.snipEnd) return;
+
+    const svg = document.querySelector('.circuit-container svg');
+    if (!svg) return;
+
+    try {
+      // Create a new SVG with only the selected area
+      const newSvg = svg.cloneNode(true) as SVGElement;
+      const x = Math.min(state.snipStart.x, state.snipEnd.x);
+      const y = Math.min(state.snipStart.y, state.snipEnd.y);
+      const width = Math.abs(state.snipEnd.x - state.snipStart.x);
+      const height = Math.abs(state.snipEnd.y - state.snipStart.y);
+
+      // Update viewBox to show only the selected area
+      newSvg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
+      newSvg.setAttribute('width', width.toString());
+      newSvg.setAttribute('height', height.toString());
+
+      // Remove the selection overlay from the cloned SVG
+      const overlay = newSvg.querySelector('rect[fill="rgba(0, 0, 0, 0.3)"]');
+      const selectionRect = newSvg.querySelector('rect[stroke="#2563eb"]');
+      const dimensionsText = newSvg.querySelector('text');
+      if (overlay) overlay.remove();
+      if (selectionRect) selectionRect.remove();
+      if (dimensionsText) dimensionsText.remove();
+
+      // Convert SVG to string
+      const svgData = new XMLSerializer().serializeToString(newSvg);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      // Create download link
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `circuit-snip-${new Date().toISOString().slice(0,19)}.svg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Reset snipping state
+      set({
+        isSnipping: false,
+        snipStart: null,
+        snipEnd: null
+      });
+    } catch (error) {
+      console.error('Error capturing snip:', error);
+    }
+  }
 }));
 
 // Helper function to find connected components
