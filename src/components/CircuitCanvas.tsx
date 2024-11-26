@@ -72,6 +72,12 @@ const CircuitCanvas: React.FC = () => {
     height: number;
   } | null>(null);
 
+  const [zoomLevel, setZoomLevel] = useState(1);
+
+  const [isPanning, setIsPanning] = useState(false);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const lastPanPosition = useRef({ x: 0, y: 0 });
+
   const handleValueEdit = (componentId: string, currentValue: string) => {
     setEditingValue({ id: componentId, value: currentValue });
   };
@@ -88,8 +94,8 @@ const CircuitCanvas: React.FC = () => {
 
     const svg = svgRef.current;
     const pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
+    pt.x = e.clientX / zoomLevel;
+    pt.y = e.clientY / zoomLevel;
     const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
 
     const snappedPoint = {
@@ -102,7 +108,7 @@ const CircuitCanvas: React.FC = () => {
     if (draggingWire) {
       updateWire(snappedPoint);
     }
-  }, [draggingWire, updateWire]);
+  }, [draggingWire, updateWire, zoomLevel]);
 
   const handleCanvasMouseUp = useCallback(() => {
     if (draggingWire) {
@@ -364,6 +370,40 @@ const CircuitCanvas: React.FC = () => {
     }
   }, [isSnipping, snipStart, snipEnd]);
 
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel(prev => Math.min(prev + 0.1, 2)); // Max zoom 2x
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel(prev => Math.max(prev - 0.1, 0.5)); // Min zoom 0.5x
+  }, []);
+
+  const handlePanStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button === 1 || (e.button === 0 && e.altKey)) { // Middle mouse or Alt+Left click
+      setIsPanning(true);
+      lastPanPosition.current = { x: e.clientX, y: e.clientY };
+      e.preventDefault();
+    }
+  }, []);
+
+  const handlePanMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPanning) return;
+
+    const dx = e.clientX - lastPanPosition.current.x;
+    const dy = e.clientY - lastPanPosition.current.y;
+    
+    setPanPosition(prev => ({
+      x: prev.x + dx,
+      y: prev.y + dy
+    }));
+    
+    lastPanPosition.current = { x: e.clientX, y: e.clientY };
+  }, [isPanning]);
+
+  const handlePanEnd = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
   return (
     <div className="flex flex-col h-full">
       <input
@@ -438,81 +478,125 @@ const CircuitCanvas: React.FC = () => {
           >
             <Scissors size={18} /> Snip
           </button>
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={handleZoomOut}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              title="Zoom Out"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <line x1="8" y1="11" x2="14" y2="11"/>
+              </svg>
+            </button>
+
+            <span className="px-2 py-1 bg-gray-100 rounded text-sm font-medium min-w-[60px] text-center">
+              {Math.round(zoomLevel * 100)}%
+            </span>
+
+            <button
+              onClick={handleZoomIn}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              title="Zoom In"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <line x1="11" y1="8" x2="11" y2="14"/>
+                <line x1="8" y1="11" x2="14" y2="11"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
       
       <div className="flex-1 bg-gray-50 p-4 relative">
-        <div className="circuit-container bg-white rounded-lg shadow-lg h-full p-4">
-          <svg
-            ref={svgRef}
-            width="100%"
-            height="100%"
-            viewBox="0 0 800 600"
-            className={`border border-gray-200 ${
-              isSnipping ? 'cursor-crosshair' : wireMode ? 'cursor-crosshair' : ''
-            }`}
-            onMouseDown={handleSnippingMouseDown}
-            onMouseMove={handleSnippingMouseMove}
-            onMouseUp={handleSnippingMouseUp}
-            onClick={handleCanvasClick}
-            style={{ cursor: isSnipping ? 'crosshair' : 'default' }}
-          >
-            {renderGrid()}
-            <g>
-              {currentDesign.wires.map((wire) => (
-                <Wire
-                  key={wire.id}
-                  id={wire.id}
-                  points={wire.points}
-                  isSelected={selectedWire === wire.id}
-                  onSelect={() => toggleWireSelect(wire.id)}
-                />
-              ))}
-              {currentDesign.components.map(renderComponent)}
-              {wireMode && isDrawing && wirePoints.length > 0 && mousePosition && (
-                <path
-                  d={`
-                    M ${wirePoints[0].x} ${wirePoints[0].y}
-                    L ${mousePosition.x} ${mousePosition.y}
-                  `}
-                  stroke="#2563eb"
-                  strokeWidth="2"
-                  strokeDasharray="4"
-                  fill="none"
-                />
-              )}
-            </g>
-            
-            {/* Snipping selection overlay */}
-            {isSnipping && (
-              <>
-                {/* Dark overlay for entire canvas */}
-                <rect
-                  x={0}
-                  y={0}
-                  width="100%"
-                  height="100%"
-                  fill="rgba(0, 0, 0, 0.3)"
-                  style={{ pointerEvents: 'none' }}
-                />
-                
-                {/* Selection area - only show when dragging */}
-                {snipStart && snipEnd && (
-                  <rect
-                    x={Math.min(snipStart.x, snipEnd.x)}
-                    y={Math.min(snipStart.y, snipEnd.y)}
-                    width={Math.abs(snipEnd.x - snipStart.x)}
-                    height={Math.abs(snipEnd.y - snipStart.y)}
-                    fill="rgba(37, 99, 235, 0.2)"
+        <div className="circuit-container bg-white rounded-lg shadow-lg h-full p-4 overflow-hidden"
+          onMouseDown={handlePanStart}
+          onMouseMove={handlePanMove}
+          onMouseUp={handlePanEnd}
+          onMouseLeave={handlePanEnd}
+        >
+          <div style={{ 
+            transform: `scale(${zoomLevel}) translate(${panPosition.x}px, ${panPosition.y}px)`, 
+            transformOrigin: 'center center',
+            transition: isPanning ? 'none' : 'transform 0.2s ease-out',
+            width: '100%',
+            height: '100%',
+            cursor: isPanning ? 'grabbing' : (zoomLevel > 1 ? 'grab' : 'default')
+          }}>
+            <svg
+              ref={svgRef}
+              width="100%"
+              height="100%"
+              viewBox="0 0 800 600"
+              className={`border border-gray-200 ${
+                isSnipping ? 'cursor-crosshair' : wireMode ? 'cursor-crosshair' : ''
+              }`}
+              onMouseDown={handleSnippingMouseDown}
+              onMouseMove={handleSnippingMouseMove}
+              onMouseUp={handleSnippingMouseUp}
+              onClick={handleCanvasClick}
+              style={{ cursor: isSnipping ? 'crosshair' : 'default' }}
+            >
+              {renderGrid()}
+              <g>
+                {currentDesign.wires.map((wire) => (
+                  <Wire
+                    key={wire.id}
+                    id={wire.id}
+                    points={wire.points}
+                    isSelected={selectedWire === wire.id}
+                    onSelect={() => toggleWireSelect(wire.id)}
+                  />
+                ))}
+                {currentDesign.components.map(renderComponent)}
+                {wireMode && isDrawing && wirePoints.length > 0 && mousePosition && (
+                  <path
+                    d={`
+                      M ${wirePoints[0].x} ${wirePoints[0].y}
+                      L ${mousePosition.x} ${mousePosition.y}
+                    `}
                     stroke="#2563eb"
                     strokeWidth="2"
                     strokeDasharray="4"
-                    style={{ pointerEvents: 'none' }}
+                    fill="none"
                   />
                 )}
-              </>
-            )}
-          </svg>
+              </g>
+              
+              {/* Snipping selection overlay */}
+              {isSnipping && (
+                <>
+                  {/* Dark overlay for entire canvas */}
+                  <rect
+                    x={0}
+                    y={0}
+                    width="100%"
+                    height="100%"
+                    fill="rgba(0, 0, 0, 0.3)"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  
+                  {/* Selection area - only show when dragging */}
+                  {snipStart && snipEnd && (
+                    <rect
+                      x={Math.min(snipStart.x, snipEnd.x)}
+                      y={Math.min(snipStart.y, snipEnd.y)}
+                      width={Math.abs(snipEnd.x - snipStart.x)}
+                      height={Math.abs(snipEnd.y - snipStart.y)}
+                      fill="rgba(37, 99, 235, 0.2)"
+                      stroke="#2563eb"
+                      strokeWidth="2"
+                      strokeDasharray="4"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  )}
+                </>
+              )}
+            </svg>
+          </div>
         </div>
         <ValidationPanel />
       </div>
