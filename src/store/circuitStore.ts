@@ -36,10 +36,12 @@ interface CircuitState {
   isSnipping: boolean;
   snipStart: Point | null;
   snipEnd: Point | null;
+  isTextMode: boolean;
+  isPanMode: boolean;
 
   // Actions
   selectComponent: (id: string | null) => void;
-  addComponent: (type: string, defaultValue?: string) => void;
+  addComponent: (type: string, defaultValue?: string, position?: Point) => void;
   updateComponent: (id: string, updates: Partial<CircuitComponent>) => void;
   deleteComponent: (id: string) => void;
   rotateComponent: (id: string) => void;
@@ -68,6 +70,8 @@ interface CircuitState {
   setSnipStart: (point: Point | null) => void;
   setSnipEnd: (point: Point | null) => void;
   captureSnip: () => void;
+  toggleTextMode: () => void;
+  togglePanMode: () => void;
 }
 
 export const useCircuitStore = create<CircuitState>((set, get) => ({
@@ -91,20 +95,22 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   isSnipping: false,
   snipStart: null,
   snipEnd: null,
+  isTextMode: false,
+  isPanMode: false,
 
   selectComponent: (id) => set({ selectedComponent: id }),
   
-  addComponent: (type, defaultValue) => {
+  addComponent: (type, defaultValue, position) => {
     get().saveToHistory();
-    const position = {
-      x: Math.round(400 / 20) * 20, // Default position, snapped to grid
-      y: Math.round(300 / 20) * 20
+    const componentPosition = position || {
+      x: Math.round(400 / GRID_SIZE) * GRID_SIZE, // Default position if none provided
+      y: Math.round(300 / GRID_SIZE) * GRID_SIZE
     };
 
     const newComponent: CircuitComponent = {
       id: `${type}-${Date.now()}`,
       type: type as CircuitComponent['type'],
-      position,
+      position: componentPosition,
       rotation: 0,
       value: defaultValue || (type === 'inductor' ? '1mH' : ''),
     };
@@ -465,7 +471,11 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     const activeComponents = new Set<string>();
     
     // Find voltage sources and grounds
-    const voltageSources = components.filter(c => c.type === 'voltage_source');
+    const voltageSources = components.filter(c => 
+      c.type === 'voltage_source' || 
+      c.type === 'ac_source' || 
+      c.type === 'dc_source'
+    );
     const grounds = components.filter(c => c.type === 'ground');
     
     // Circuit needs both voltage source and ground to work
@@ -608,7 +618,22 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     } catch (error) {
       console.error('Error capturing snip:', error);
     }
-  }
+  },
+
+  toggleTextMode: () => set(state => ({ isTextMode: !state.isTextMode })),
+
+  togglePanMode: () => set(state => {
+    // Disable other modes when enabling pan mode
+    if (!state.isPanMode) {
+      return {
+        isPanMode: true,
+        wireMode: false,
+        isSnipping: false,
+        isTextMode: false,
+      };
+    }
+    return { isPanMode: false };
+  }),
 }));
 
 // Helper function to find connected components

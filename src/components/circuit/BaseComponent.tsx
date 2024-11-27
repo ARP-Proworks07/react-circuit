@@ -18,6 +18,7 @@ export interface BaseComponentProps {
   onRotate: () => void;
   onStartWire: (terminal: Point) => void;
   onCompleteWire: (terminal: Point) => void;
+  controlsOffset?: number;
 }
 
 interface TerminalElementProps extends SVGProps<SVGCircleElement> {
@@ -26,6 +27,23 @@ interface TerminalElementProps extends SVGProps<SVGCircleElement> {
   className?: string;
   onMouseDown?: (e: React.MouseEvent<SVGCircleElement, MouseEvent>) => void;
   onMouseUp?: (e: React.MouseEvent<SVGCircleElement, MouseEvent>) => void;
+}
+
+export interface BaseComponentProps {
+  id: string;
+  x: number;
+  y: number;
+  rotation: number;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDoubleClick: () => void;
+  onDelete: () => void;
+  onRotate: () => void;
+  onStartWire: (point: Point) => void;
+  onCompleteWire: (point: Point) => void;
+  value?: string;
+  controlsOffset?: number;
+  controlsPosition?: 'default' | 'bottom';
 }
 
 export const BaseComponent: React.FC<BaseComponentProps & { children: React.ReactNode }> = ({
@@ -40,6 +58,8 @@ export const BaseComponent: React.FC<BaseComponentProps & { children: React.Reac
   onRotate,
   onStartWire,
   onCompleteWire,
+  controlsOffset = 20,
+  controlsPosition = 'default',
   children,
 }) => {
   const [isDragging, setIsDragging] = useState(false);  // State and refs for dragging
@@ -172,72 +192,100 @@ export const BaseComponent: React.FC<BaseComponentProps & { children: React.Reac
       </g>
       {isSelected && (
         <g className="component-controls">
-          <g
-            onClick={(e: React.MouseEvent<SVGGElement>) => {
-              e.stopPropagation();
-              updateComponent(id, { 
-                rotation: rotation - 90,
-                position: { x, y }
-              });
-            }}
-            className="cursor-pointer"
-          >
-            <circle
-              cx="-30"
-              cy="-30"
-              r="10"
-              fill="white"
-              stroke="#2563eb"
-              strokeWidth="2"
-              className="hover:stroke-blue-400 transition-colors duration-150"
-            />
-            <g transform="translate(-36, -36) scale(0.6)">
-              <RotateCcw color="#2563eb" />
-            </g>
-          </g>
-          <g
-            onClick={(e: React.MouseEvent<SVGGElement>) => {
-              e.stopPropagation();
-              updateComponent(id, { 
-                rotation: rotation + 90,
-                position: { x, y }
-              });
-            }}
-            className="cursor-pointer"
-          >
-            <circle
-              cx="0"
-              cy="-30"
-              r="10"
-              fill="white"
-              stroke="#2563eb"
-              strokeWidth="2"
-              className="hover:stroke-blue-400 transition-colors duration-150"
-            />
-            <g transform="translate(-6, -36) scale(0.6)">
-              <RotateCw color="#2563eb" />
-            </g>
-          </g>
-          <g
-            onClick={(e: React.MouseEvent<SVGGElement>) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="cursor-pointer"
-          >
-            <circle
-              cx="30"
-              cy="0"
-              r="10"
-              fill="white"
-              stroke="#ef4444"
-              strokeWidth="2"
-              className="hover:stroke-red-400 transition-colors duration-150"
-            />
-            <g transform="translate(24, -6) scale(0.6)">
-              <Trash2 color="#ef4444" />
-            </g>
-          </g>
+          {controlsPosition === 'bottom' ? (
+            <>
+              <g
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="cursor-pointer"
+                transform={`translate(0, ${controlsOffset})`}
+              >
+                <circle
+                  cx="0"
+                  cy="0"
+                  r="10"
+                  fill="white"
+                  stroke="#ef4444"
+                  strokeWidth="2"
+                  className="hover:stroke-red-400 transition-colors duration-150"
+                />
+                <g transform="translate(-6, -6) scale(0.6)">
+                  <Trash2 color="#ef4444" />
+                </g>
+              </g>
+            </>
+          ) : (
+            <>
+              <g
+                onClick={(e: React.MouseEvent<SVGGElement>) => {
+                  e.stopPropagation();
+                  updateComponent(id, { 
+                    rotation: rotation - 90,
+                    position: { x, y }
+                  });
+                }}
+                className="cursor-pointer"
+              >
+                <circle
+                  cx="-30"
+                  cy="-30"
+                  r="10"
+                  fill="white"
+                  stroke="#2563eb"
+                  strokeWidth="2"
+                  className="hover:stroke-blue-400 transition-colors duration-150"
+                />
+                <g transform="translate(-36, -36) scale(0.6)">
+                  <RotateCcw color="#2563eb" />
+                </g>
+              </g>
+              <g
+                onClick={(e: React.MouseEvent<SVGGElement>) => {
+                  e.stopPropagation();
+                  updateComponent(id, { 
+                    rotation: rotation + 90,
+                    position: { x, y }
+                  });
+                }}
+                className="cursor-pointer"
+              >
+                <circle
+                  cx="0"
+                  cy="-30"
+                  r="10"
+                  fill="white"
+                  stroke="#2563eb"
+                  strokeWidth="2"
+                  className="hover:stroke-blue-400 transition-colors duration-150"
+                />
+                <g transform="translate(-6, -36) scale(0.6)">
+                  <RotateCw color="#2563eb" />
+                </g>
+              </g>
+              <g
+                onClick={(e: React.MouseEvent<SVGGElement>) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="cursor-pointer"
+              >
+                <circle
+                  cx="30"
+                  cy="0"
+                  r="10"
+                  fill="white"
+                  stroke="#ef4444"
+                  strokeWidth="2"
+                  className="hover:stroke-red-400 transition-colors duration-150"
+                />
+                <g transform="translate(24, -6) scale(0.6)">
+                  <Trash2 color="#ef4444" />
+                </g>
+              </g>
+            </>
+          )}
         </g>
       )}
     </g>

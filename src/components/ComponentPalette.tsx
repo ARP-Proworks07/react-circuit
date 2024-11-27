@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCircuitStore } from '../store/circuitStore';
 import { 
   Battery, 
@@ -10,7 +10,10 @@ import {
   ToggleLeft,
   Lightbulb,
   GitBranch,
-  Lamp
+  Lamp,
+  Type,
+  Waves,
+  BatteryCharging
 } from 'lucide-react';
 import { ComponentType } from '../types/Circuit';
 import { LucideIcon } from 'lucide-react';
@@ -23,19 +26,21 @@ interface ComponentItem {
 }
 
 const ComponentPalette: React.FC = () => {
-  const { addComponent, toggleWireMode, wireMode } = useCircuitStore();
+  const { addComponent, toggleWireMode, wireMode, isTextMode, toggleTextMode } = useCircuitStore();
 
   const components: ComponentItem[] = [
     { type: 'resistor', icon: Hash, label: 'Resistor', defaultValue: '1kΩ' },
     { type: 'capacitor', icon: Circle, label: 'Capacitor', defaultValue: '1µF' },
     { type: 'inductor', icon: Codesandbox, label: 'Inductor', defaultValue: '1mH' },
-    { type: 'voltage_source', icon: Battery, label: 'Voltage Source', defaultValue: '5V' },
+    { type: 'ac_source', icon: Waves, label: 'AC Source', defaultValue: '120V' },
+    { type: 'dc_source', icon: BatteryCharging, label: 'DC Source', defaultValue: '5V' },
     { type: 'ground', icon: Zap, label: 'Ground' },
     { type: 'diode', icon: Radio, label: 'Diode' },
     { type: 'transistor', icon: Radio, label: 'Transistor', defaultValue: 'NPN' },
     { type: 'led', icon: Lightbulb, label: 'LED' },
     { type: 'switch', icon: ToggleLeft, label: 'Switch' },
     { type: 'bulb', icon: Lamp, label: 'Bulb' },
+    { type: 'text', icon: Type, label: 'Text', defaultValue: 'Text' },
   ];
 
   return (
@@ -58,8 +63,16 @@ const ComponentPalette: React.FC = () => {
         {components.map((component) => (
           <button
             key={component.type}
-            onClick={() => addComponent(component.type, component.defaultValue)}
-            className="w-full flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
+            onClick={() => {
+              if (component.type === 'text') {
+                toggleTextMode(); // Toggle text mode instead of local state
+              } else {
+                addComponent(component.type, component.defaultValue);
+              }
+            }}
+            className={`w-full flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors ${
+              component.type === 'text' && isTextMode ? 'bg-blue-100 text-blue-700' : ''
+            }`}
           >
             <component.icon size={20} />
             <span>{component.label}</span>

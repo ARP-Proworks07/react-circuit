@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
-import { Save, Download, Trash2, Grid, Undo2, Redo2, FileDown, Scissors } from 'lucide-react';
+import { Save, Download, Trash2, Grid, Undo2, Redo2, FileDown, Scissors, Type, Move } from 'lucide-react';
 import { useCircuitStore } from '../store/circuitStore';
 import { CircuitComponent, Point, GRID_SIZE } from '../types/Circuit';
 import { Resistor } from './circuit/Resistor';
@@ -17,6 +17,9 @@ import { ValidationPanel } from './ValidationPanel';
 import { Wire } from './circuit/Wire';
 import Bulb from './circuit/Bulb';
 import html2canvas from 'html2canvas';
+import { Text } from './circuit/Text';
+import { ACSource } from './circuit/ACSource';
+import { DCSource } from './circuit/DCSource';
 
 
 const CircuitCanvas: React.FC = () => {
@@ -57,6 +60,11 @@ const CircuitCanvas: React.FC = () => {
     setSnipStart,
     setSnipEnd,
     captureSnip,
+    addComponent,
+    isTextMode,
+    toggleTextMode,
+    isPanMode,
+    togglePanMode,
   } = useCircuitStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,16 +86,40 @@ const CircuitCanvas: React.FC = () => {
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const lastPanPosition = useRef({ x: 0, y: 0 });
 
-  const handleValueEdit = (componentId: string, currentValue: string) => {
-    setEditingValue({ id: componentId, value: currentValue });
-  };
+  const [textInput, setTextInput] = useState<{
+    position: Point;
+    value: string;
+  } | null>(null);
 
-  const handleValueSave = (newValue: string) => {
-    if (editingValue) {
-      updateComponent(editingValue.id, { value: newValue });
-      setEditingValue(null);
+  const handleValueEdit = useCallback((id: string, currentValue: string) => {
+    const component = currentDesign.components.find(c => c.id === id);
+    if (!component) return;
+
+    if (component.type === 'text') {
+      // For text components, allow empty values and don't add units
+      setEditingValue({ id, value: currentValue || '' });
+    } else {
+      // Existing logic for other components
+      setEditingValue({ id, value: currentValue || '1k' });
     }
-  };
+  }, [currentDesign.components]);
+
+  const handleValueSave = useCallback((value: string) => {
+    if (!editingValue) return;
+    
+    const component = currentDesign.components.find(c => c.id === editingValue.id);
+    if (!component) return;
+
+    if (component.type === 'text') {
+      // For text components, save the value as-is
+      updateComponent(editingValue.id, { value });
+    } else {
+      // Existing logic for other components
+      updateComponent(editingValue.id, { value: value || '1k' });
+    }
+    
+    setEditingValue(null);
+  }, [editingValue, currentDesign.components, updateComponent]);
 
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (!svgRef.current) return;
@@ -117,6 +149,37 @@ const CircuitCanvas: React.FC = () => {
   }, [draggingWire, cancelWire]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (!svgRef.current) return;
+
+    // Handle text placement when in text mode
+    if (isTextMode) {
+      const svg = svgRef.current;
+      const pt = svg.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      
+      // Get the CTM (Current Transformation Matrix)
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return;
+      
+      // Transform the point from screen to SVG coordinates
+      const svgP = pt.matrixTransform(ctm.inverse());
+
+      // Calculate position considering zoom and pan
+      const adjustedPoint = {
+        x: (svgP.x - panPosition.x) / zoomLevel,
+        y: (svgP.y - panPosition.y) / zoomLevel
+      };
+
+      const snappedPoint = {
+        x: Math.round(adjustedPoint.x / GRID_SIZE) * GRID_SIZE,
+        y: Math.round(adjustedPoint.y / GRID_SIZE) * GRID_SIZE,
+      };
+
+      setTextInput({ position: snappedPoint, value: '' });
+      return;
+    }
+
     // Only deselect if clicking directly on the canvas background
     if (e.target === e.currentTarget) {
       selectComponent(null);
@@ -136,7 +199,7 @@ const CircuitCanvas: React.FC = () => {
     };
 
     addWirePoint(snappedPoint);
-  }, [wireMode, addWirePoint, selectComponent]);
+  }, [wireMode, addWirePoint, selectComponent, isTextMode, addComponent, toggleTextMode, zoomLevel, panPosition]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
@@ -159,8 +222,18 @@ const CircuitCanvas: React.FC = () => {
           isDrawing: false
         });
       }
+      if (snipPreview) {
+        setSnipPreview(null);
+      }
+      if (state.isSnipping) {
+        useCircuitStore.setState({
+          isSnipping: false,
+          snipStart: null,
+          snipEnd: null
+        });
+      }
     }
-  }, [wireMode, completeWirePath, draggingWire, cancelWire, undo, redo]);
+  }, [wireMode, completeWirePath, draggingWire, cancelWire, undo, redo, snipPreview, setSnipPreview]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -250,6 +323,12 @@ const CircuitCanvas: React.FC = () => {
         return <Switch key={component.id} {...commonProps} />;
       case 'bulb':
         return <Bulb key={component.id} {...commonProps} />;
+      case 'text':
+        return <Text key={component.id} {...commonProps} />;
+      case 'ac_source':
+        return <ACSource key={component.id} {...commonProps} />;
+      case 'dc_source':
+        return <DCSource key={component.id} {...commonProps} />;
       default:
         console.warn(`Unknown component type: ${component.type}`);
         return null;
@@ -379,12 +458,16 @@ const CircuitCanvas: React.FC = () => {
   }, []);
 
   const handlePanStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button === 1 || (e.button === 0 && e.altKey)) { // Middle mouse or Alt+Left click
+    if (isPanMode && e.button === 0) { // Allow left click when in pan mode
+      setIsPanning(true);
+      lastPanPosition.current = { x: e.clientX, y: e.clientY };
+      e.preventDefault();
+    } else if (e.button === 1 || (e.button === 0 && e.altKey)) { // Keep middle mouse and Alt+Left click
       setIsPanning(true);
       lastPanPosition.current = { x: e.clientX, y: e.clientY };
       e.preventDefault();
     }
-  }, []);
+  }, [isPanMode]);
 
   const handlePanMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isPanning) return;
@@ -478,6 +561,15 @@ const CircuitCanvas: React.FC = () => {
           >
             <Scissors size={18} /> Snip
           </button>
+          <button
+            onClick={togglePanMode}
+            className={`flex items-center gap-2 px-3 py-2 ${
+              isPanMode ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            } rounded hover:bg-opacity-90`}
+            title="Pan Tool"
+          >
+            <Move size={18} /> Pan
+          </button>
           <div className="flex gap-2 items-center">
             <button
               onClick={handleZoomOut}
@@ -512,11 +604,17 @@ const CircuitCanvas: React.FC = () => {
       </div>
       
       <div className="flex-1 bg-gray-50 p-4 relative">
-        <div className="circuit-container bg-white rounded-lg shadow-lg h-full p-4 overflow-hidden"
+        <div 
+          className="circuit-container bg-white rounded-lg shadow-lg h-full p-4 overflow-hidden"
           onMouseDown={handlePanStart}
           onMouseMove={handlePanMove}
           onMouseUp={handlePanEnd}
           onMouseLeave={handlePanEnd}
+          style={{
+            cursor: isPanning ? 'grabbing' : (isPanMode ? 'grab' : 
+              isSnipping ? 'crosshair' : 
+              wireMode ? 'crosshair' : 'default')
+          }}
         >
           <div style={{ 
             transform: `scale(${zoomLevel}) translate(${panPosition.x}px, ${panPosition.y}px)`, 
@@ -672,6 +770,49 @@ const CircuitCanvas: React.FC = () => {
             <FileDown size={16} />
             Download Snip
           </button>
+        </div>
+      )}
+      {textInput && (
+        <div 
+          className="absolute z-50"
+          style={{
+            left: `${textInput.position.x * zoomLevel + panPosition.x}px`,
+            top: `${textInput.position.y * zoomLevel + panPosition.y}px`,
+            transform: 'translate(0, 0)'
+          }}
+        >
+          <input
+            type="text"
+            autoFocus
+            value={textInput.value}
+            onChange={(e) => setTextInput({ ...textInput, value: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (textInput.value.trim()) {
+                  addComponent('text', textInput.value, textInput.position);
+                }
+                setTextInput(null);
+                toggleTextMode();
+              } else if (e.key === 'Escape') {
+                setTextInput(null);
+                toggleTextMode();
+              }
+            }}
+            onBlur={() => {
+              if (textInput.value.trim()) {
+                addComponent('text', textInput.value, textInput.position);
+              }
+              setTextInput(null);
+              toggleTextMode();
+            }}
+            className="bg-transparent border-none outline-none p-0 text-black text-center"
+            style={{
+              caretColor: 'black',
+              width: 'auto',
+              minWidth: '20px'
+            }}
+            placeholder=""
+          />
         </div>
       )}
     </div>

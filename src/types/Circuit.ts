@@ -9,12 +9,15 @@ export type ComponentType =
   | 'capacitor'
   | 'inductor'
   | 'voltage_source'
+  | 'ac_source'
+  | 'dc_source'
   | 'ground'
   | 'diode'
   | 'transistor'
   | 'led'
   | 'switch'
-  | 'bulb';
+  | 'bulb'
+  | 'text';
 
 export interface CircuitComponent {
   id: string;
