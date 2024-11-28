@@ -4,9 +4,11 @@ import CircuitCanvas from './components/CircuitCanvas';
 
 function App() {
   return (
-    <div className="flex h-screen bg-gray-100">
-      <ComponentPalette />
-      <div className="flex-1">
+    <div className="circuit-layout">
+      <div className="component-palette">
+        <ComponentPalette />
+      </div>
+      <div className="circuit-workspace">
         <CircuitCanvas />
       </div>
     </div>

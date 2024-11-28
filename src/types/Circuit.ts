@@ -5,6 +5,7 @@ export interface Point {
 }
 
 export type ComponentType = 
+  | 'wire'
   | 'resistor'
   | 'capacitor'
   | 'inductor'

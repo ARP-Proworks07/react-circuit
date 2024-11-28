@@ -13,7 +13,7 @@ export const ACSource: React.FC<Omit<BaseComponentProps, 'children'>> = (props) 
       />
       <text
         x="0"
-        y="25"
+        y="35"
         textAnchor="middle"
         fill="black"
         fontSize="12"

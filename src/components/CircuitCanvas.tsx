@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
-import { Save, Download, Trash2, Grid, Undo2, Redo2, FileDown, Scissors, Type, Move } from 'lucide-react';
+import { Save, Download, Trash2, Grid, Undo2, Redo2, FileDown, Scissors, Type } from 'lucide-react';
 import { useCircuitStore } from '../store/circuitStore';
 import { CircuitComponent, Point, GRID_SIZE } from '../types/Circuit';
 import { Resistor } from './circuit/Resistor';
@@ -63,8 +63,6 @@ const CircuitCanvas: React.FC = () => {
     addComponent,
     isTextMode,
     toggleTextMode,
-    isPanMode,
-    togglePanMode,
   } = useCircuitStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,10 +84,7 @@ const CircuitCanvas: React.FC = () => {
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const lastPanPosition = useRef({ x: 0, y: 0 });
 
-  const [textInput, setTextInput] = useState<{
-    position: Point;
-    value: string;
-  } | null>(null);
+  const [textInput, setTextInput] = useState<{ position: Point; value: string } | null>(null);
 
   const handleValueEdit = useCallback((id: string, currentValue: string) => {
     const component = currentDesign.components.find(c => c.id === id);
@@ -158,25 +153,22 @@ const CircuitCanvas: React.FC = () => {
       pt.x = e.clientX;
       pt.y = e.clientY;
       
-      // Get the CTM (Current Transformation Matrix)
-      const ctm = svg.getScreenCTM();
-      if (!ctm) return;
+      // Transform the point from screen coordinates to SVG coordinates
+      const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
       
-      // Transform the point from screen to SVG coordinates
-      const svgP = pt.matrixTransform(ctm.inverse());
-
-      // Calculate position considering zoom and pan
-      const adjustedPoint = {
-        x: (svgP.x - panPosition.x) / zoomLevel,
-        y: (svgP.y - panPosition.y) / zoomLevel
+      // Snap to grid
+      const snappedPosition = {
+        x: Math.round((svgP.x - panPosition.x) / (GRID_SIZE * zoomLevel)) * GRID_SIZE,
+        y: Math.round((svgP.y - panPosition.y) / (GRID_SIZE * zoomLevel)) * GRID_SIZE
       };
 
-      const snappedPoint = {
-        x: Math.round(adjustedPoint.x / GRID_SIZE) * GRID_SIZE,
-        y: Math.round(adjustedPoint.y / GRID_SIZE) * GRID_SIZE,
-      };
-
-      setTextInput({ position: snappedPoint, value: '' });
+      setTextInput({
+        position: {
+          x: e.clientX,
+          y: e.clientY
+        },
+        value: ''
+      });
       return;
     }
 
@@ -210,34 +202,35 @@ const CircuitCanvas: React.FC = () => {
         undo();
       }
     }
-    const state = useCircuitStore.getState();
-    if (e.key === 'Enter' && state.wireMode && state.isDrawing) {
-      completeWirePath();
-    } else if (e.key === 'Escape') {
-      if (draggingWire) {
-        cancelWire();
-      } else if (state.isDrawing) {
-        useCircuitStore.setState({
-          wirePoints: [],
-          isDrawing: false
-        });
-      }
-      if (snipPreview) {
+
+    if (e.key === 'Escape') {
+      // Clear snip preview and reset snipping state
+      if (snipPreview || isSnipping) {
         setSnipPreview(null);
-      }
-      if (state.isSnipping) {
         useCircuitStore.setState({
           isSnipping: false,
           snipStart: null,
           snipEnd: null
         });
       }
+      
+      // Handle other escape actions
+      if (draggingWire) {
+        cancelWire();
+      } else if (wireMode && isDrawing) {
+        useCircuitStore.setState({
+          wirePoints: [],
+          isDrawing: false
+        });
+      }
     }
-  }, [wireMode, completeWirePath, draggingWire, cancelWire, undo, redo, snipPreview, setSnipPreview]);
+  }, [snipPreview, isSnipping, draggingWire, cancelWire, wireMode, isDrawing, undo, redo]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [handleKeyDown]);
 
   const renderGrid = () => {
@@ -458,16 +451,12 @@ const CircuitCanvas: React.FC = () => {
   }, []);
 
   const handlePanStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPanMode && e.button === 0) { // Allow left click when in pan mode
-      setIsPanning(true);
-      lastPanPosition.current = { x: e.clientX, y: e.clientY };
-      e.preventDefault();
-    } else if (e.button === 1 || (e.button === 0 && e.altKey)) { // Keep middle mouse and Alt+Left click
+    if (e.button === 1 || (e.button === 0 && e.altKey)) { // Middle mouse or Alt+Left click
       setIsPanning(true);
       lastPanPosition.current = { x: e.clientX, y: e.clientY };
       e.preventDefault();
     }
-  }, [isPanMode]);
+  }, []);
 
   const handlePanMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isPanning) return;
@@ -561,15 +550,6 @@ const CircuitCanvas: React.FC = () => {
           >
             <Scissors size={18} /> Snip
           </button>
-          <button
-            onClick={togglePanMode}
-            className={`flex items-center gap-2 px-3 py-2 ${
-              isPanMode ? 'bg-blue-500 text-white' : 'bg-gray-200'
-            } rounded hover:bg-opacity-90`}
-            title="Pan Tool"
-          >
-            <Move size={18} /> Pan
-          </button>
           <div className="flex gap-2 items-center">
             <button
               onClick={handleZoomOut}
@@ -604,17 +584,11 @@ const CircuitCanvas: React.FC = () => {
       </div>
       
       <div className="flex-1 bg-gray-50 p-4 relative">
-        <div 
-          className="circuit-container bg-white rounded-lg shadow-lg h-full p-4 overflow-hidden"
+        <div className="circuit-container bg-white rounded-lg shadow-lg h-full p-4 overflow-hidden"
           onMouseDown={handlePanStart}
           onMouseMove={handlePanMove}
           onMouseUp={handlePanEnd}
           onMouseLeave={handlePanEnd}
-          style={{
-            cursor: isPanning ? 'grabbing' : (isPanMode ? 'grab' : 
-              isSnipping ? 'crosshair' : 
-              wireMode ? 'crosshair' : 'default')
-          }}
         >
           <div style={{ 
             transform: `scale(${zoomLevel}) translate(${panPosition.x}px, ${panPosition.y}px)`, 
@@ -772,13 +746,14 @@ const CircuitCanvas: React.FC = () => {
           </button>
         </div>
       )}
+      {/* Text Input */}
       {textInput && (
         <div 
           className="absolute z-50"
           style={{
-            left: `${textInput.position.x * zoomLevel + panPosition.x}px`,
-            top: `${textInput.position.y * zoomLevel + panPosition.y}px`,
-            transform: 'translate(0, 0)'
+            left: `${textInput.position.x}px`,
+            top: `${textInput.position.y}px`,
+            transform: 'translate(-2px, -10px)' // Small offset to align cursor
           }}
         >
           <input
@@ -787,31 +762,54 @@ const CircuitCanvas: React.FC = () => {
             value={textInput.value}
             onChange={(e) => setTextInput({ ...textInput, value: e.target.value })}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                if (textInput.value.trim()) {
-                  addComponent('text', textInput.value, textInput.position);
+              if (e.key === 'Enter' || e.key === 'Escape') {
+                if (textInput.value.trim() && e.key === 'Enter') {
+                  // Convert screen coordinates back to grid coordinates
+                  const svg = svgRef.current;
+                  if (!svg) return;
+                  
+                  const pt = svg.createSVGPoint();
+                  pt.x = textInput.position.x;
+                  pt.y = textInput.position.y;
+                  const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+                  
+                  const gridPosition = {
+                    x: Math.round((svgP.x - panPosition.x) / (GRID_SIZE * zoomLevel)) * GRID_SIZE,
+                    y: Math.round((svgP.y - panPosition.y) / (GRID_SIZE * zoomLevel)) * GRID_SIZE
+                  };
+                  
+                  addComponent('text', textInput.value, gridPosition);
                 }
-                setTextInput(null);
-                toggleTextMode();
-              } else if (e.key === 'Escape') {
                 setTextInput(null);
                 toggleTextMode();
               }
             }}
             onBlur={() => {
               if (textInput.value.trim()) {
-                addComponent('text', textInput.value, textInput.position);
+                const svg = svgRef.current;
+                if (!svg) return;
+                
+                const pt = svg.createSVGPoint();
+                pt.x = textInput.position.x;
+                pt.y = textInput.position.y;
+                const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+                
+                const gridPosition = {
+                  x: Math.round((svgP.x - panPosition.x) / (GRID_SIZE * zoomLevel)) * GRID_SIZE,
+                  y: Math.round((svgP.y - panPosition.y) / (GRID_SIZE * zoomLevel)) * GRID_SIZE
+                };
+                
+                addComponent('text', textInput.value, gridPosition);
               }
               setTextInput(null);
               toggleTextMode();
             }}
-            className="bg-transparent border-none outline-none p-0 text-black text-center"
+            className="bg-transparent border-none outline-none p-0 text-black"
             style={{
               caretColor: 'black',
               width: 'auto',
               minWidth: '20px'
             }}
-            placeholder=""
           />
         </div>
       )}

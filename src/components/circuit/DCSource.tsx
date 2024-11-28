@@ -9,7 +9,7 @@ export const DCSource: React.FC<Omit<BaseComponentProps, 'children'>> = (props) 
       <line x1="8" y1="-8" x2="8" y2="8" stroke="black" strokeWidth="2" />
       <text
         x="0"
-        y="25"
+        y="35"
         textAnchor="middle"
         fill="black"
         fontSize="12"

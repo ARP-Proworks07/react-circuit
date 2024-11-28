@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useCircuitStore } from '../store/circuitStore';
 import { 
   Battery, 
@@ -29,6 +29,7 @@ const ComponentPalette: React.FC = () => {
   const { addComponent, toggleWireMode, wireMode, isTextMode, toggleTextMode } = useCircuitStore();
 
   const components: ComponentItem[] = [
+    { type: 'wire' as ComponentType, icon: GitBranch, label: 'Wire Tool' },
     { type: 'resistor', icon: Hash, label: 'Resistor', defaultValue: '1kΩ' },
     { type: 'capacitor', icon: Circle, label: 'Capacitor', defaultValue: '1µF' },
     { type: 'inductor', icon: Codesandbox, label: 'Inductor', defaultValue: '1mH' },
@@ -43,44 +44,46 @@ const ComponentPalette: React.FC = () => {
     { type: 'text', icon: Type, label: 'Text', defaultValue: 'Text' },
   ];
 
+  const handleComponentClick = (component: ComponentItem) => {
+    if (component.type === 'wire') {
+      toggleWireMode(); // Toggle wire mode
+    } else if (component.type === 'text') {
+      toggleTextMode(); // Toggle text mode
+    } else {
+      addComponent(component.type, component.defaultValue);
+    }
+  };
+
   return (
-    <div className="w-64 bg-white border-r p-4">
-      <div className="mb-4">
+    <div className="w-64 bg-white border-r h-full flex flex-col">
+      <div className="p-4 border-b">
         <h3 className="text-lg font-semibold">Components</h3>
       </div>
-      <div className="space-y-2">
-        {/* Wire Tool button */}
-        <button
-          onClick={toggleWireMode}
-          className={`w-full flex items-center gap-2 p-2 rounded transition-colors ${
-            wireMode ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'
-          }`}
-        >
-          <GitBranch size={20} />
-          <span>Wire Tool</span>
-        </button>
 
-        {components.map((component) => (
-          <button
-            key={component.type}
-            onClick={() => {
-              if (component.type === 'text') {
-                toggleTextMode(); // Toggle text mode instead of local state
-              } else {
-                addComponent(component.type, component.defaultValue);
-              }
-            }}
-            className={`w-full flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors ${
-              component.type === 'text' && isTextMode ? 'bg-blue-100 text-blue-700' : ''
-            }`}
-          >
-            <component.icon size={20} />
-            <span>{component.label}</span>
-          </button>
-        ))}
-        
-        {/* Wire Instructions */}
-        <div className="mt-6 p-3 bg-blue-50 rounded-md">
+      <div className="border-b" style={{ height: '300px' }}>
+        <div className="h-full overflow-y-auto p-4">
+          <div className="space-y-2">
+            {components.map((component) => (
+              <button
+                key={component.type}
+                onClick={() => handleComponentClick(component)}
+                className={`w-full flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors ${
+                  (component.type === 'wire' && wireMode) || 
+                  (component.type === 'text' && isTextMode) 
+                    ? 'bg-blue-100 text-blue-700' 
+                    : ''
+                }`}
+              >
+                <component.icon size={20} />
+                <span>{component.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 mt-auto">
+        <div className="p-3 bg-blue-50 rounded-md">
           <div className="flex items-center gap-2 text-blue-700 mb-2">
             <GitBranch size={20} />
             <span className="font-semibold">Wire Tool Usage</span>

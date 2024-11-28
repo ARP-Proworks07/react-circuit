@@ -23,3 +23,118 @@
 g[transform*="rotate"] {
   transition: transform 150ms ease-out;
 }
+
+/* Add these responsive styles */
+@media (max-width: 768px) {
+  .circuit-container {
+    touch-action: none; /* Prevents default touch behaviors on mobile */
+  }
+
+  /* Adjust component controls for touch devices */
+  .component-controls circle {
+    r: 12; /* Larger touch targets on mobile */
+  }
+
+  /* Make terminals easier to tap */
+  .terminal {
+    r: 6;
+  }
+}
+
+/* Ensure the layout doesn't break on very small screens */
+@media (max-width: 480px) {
+  .toolbar-button {
+    padding: 0.5rem;
+  }
+  
+  .zoom-control {
+    min-width: 40px;
+  }
+}
+
+/* Toolbar Styles */
+.toolbar-btn {
+  @apply flex items-center justify-center gap-1 px-2 py-1.5 rounded 
+  hover:bg-opacity-90 transition-colors duration-150 text-sm whitespace-nowrap;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+/* Toolbar Responsive Styles */
+@media (max-width: 768px) {
+  .toolbar-btn {
+    @apply px-2 py-1;
+  }
+  
+  .toolbar-btn svg {
+    @apply w-4 h-4;
+  }
+}
+
+@media (max-width: 480px) {
+  .toolbar-btn {
+    @apply min-w-[32px] justify-center;
+  }
+}
+
+/* Add responsive layout styles */
+@layer components {
+  .circuit-layout {
+    @apply flex flex-col md:flex-row h-screen overflow-hidden;
+  }
+
+  .circuit-sidebar {
+    @apply w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r;
+  }
+
+  .circuit-workspace {
+    @apply flex-1 flex flex-col min-w-0;
+  }
+
+  .toolbar-container {
+    @apply flex-shrink-0;
+  }
+
+  .canvas-container {
+    @apply flex-1 min-h-0 relative overflow-hidden;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .toolbar-btn {
+    @apply p-1.5;
+    min-width: 28px;
+    min-height: 28px;
+  }
+
+  .circuit-container svg {
+    @apply touch-none;
+  }
+}
+
+/* Medium screens */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .toolbar-btn {
+    @apply px-2 py-1.5;
+  }
+}
+
+/* Large screens */
+@media (min-width: 1025px) {
+  .toolbar-btn {
+    @apply px-3 py-2;
+  }
+}
+
+/* Improve touch targets on mobile devices */
+@media (pointer: coarse) {
+  .toolbar-btn {
+    @apply min-h-[40px] min-w-[40px];
+  }
+}
+
+/* Prevent text overflow */
+.text-ellipsis {
+  @apply truncate;
+}
