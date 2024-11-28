@@ -138,3 +138,227 @@ g[transform*="rotate"] {
 .text-ellipsis {
   @apply truncate;
 }
+
+/* Enable scrolling for the entire application */
+html, body {
+  @apply h-screen w-screen overflow-auto;
+  min-width: 1024px; /* Minimum width before horizontal scroll appears */
+}
+
+/* Main Layout */
+.circuit-layout {
+  @apply flex h-screen min-h-screen;
+  min-width: 1024px;
+}
+
+/* Component Palette */
+.component-palette {
+  @apply w-64 border-r bg-white flex flex-col;
+  min-width: 256px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  left: 0;
+}
+
+/* Main Workspace */
+.circuit-workspace {
+  @apply flex-1 flex flex-col;
+  min-width: 600px;
+}
+
+/* Toolbar Container */
+.toolbar-container {
+  @apply bg-white p-4 shadow-sm border-b;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+/* Canvas Container */
+.canvas-container {
+  @apply flex-1 relative overflow-auto bg-gray-50;
+  width: 800px;
+  min-height: calc(100vh - 128px);
+}
+
+/* Circuit Container */
+.circuit-container {
+  @apply w-full h-full;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+/* Component List in Palette */
+.component-list {
+  @apply overflow-y-auto;
+  height: calc(100vh - 200px);
+}
+
+/* Wire Instructions */
+.wire-instructions {
+  @apply p-4 border-t bg-white;
+  position: sticky;
+  bottom: 0;
+}
+
+/* Ensure buttons and controls stay visible */
+.toolbar-btn {
+  @apply whitespace-nowrap;
+}
+
+/* Maintain component visibility */
+.component-controls {
+  @apply z-30;
+}
+
+/* Handle touch devices */
+@media (pointer: coarse) {
+  .toolbar-btn {
+    @apply min-h-[40px] min-w-[40px];
+  }
+  
+  .terminal {
+    r: 6;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 1280px) {
+  html, body {
+    @apply overflow-x-auto;
+  }
+  
+  .circuit-layout {
+    width: fit-content;
+  }
+}
+
+/* Add styles for the header */
+.circuit-header {
+  @apply bg-white border-b p-4;
+  min-height: 64px; /* Adjust as needed */
+}
+
+/* Adjust workspace layout */
+.circuit-workspace {
+  @apply flex-1 flex flex-col;
+  width: fit-content;
+}
+
+/* Ensure toolbar maintains its position */
+.toolbar-container {
+  @apply bg-white p-4 shadow-sm border-b flex justify-between items-center;
+  min-height: 64px;
+}
+
+/* Adjust canvas container to account for header */
+.canvas-container {
+  @apply flex-1 relative overflow-auto bg-gray-50;
+  min-width: 800px;
+  min-height: calc(100vh - 192px); /* Adjust based on header + toolbar height */
+}
+
+/* Header styles */
+.header {
+  @apply bg-white border-b p-4;
+  min-height: 64px;
+}
+
+/* Main layout adjustments */
+.circuit-layout {
+  @apply flex h-[calc(100vh-64px)] overflow-hidden;
+  width: fit-content;
+}
+
+/* Update other responsive styles to account for header height */
+.canvas-container {
+  @apply flex-1 relative overflow-auto bg-gray-50;
+  min-width: 800px;
+  min-height: calc(100vh - 128px); /* Adjusted for header */
+}
+
+/* Add footer styles */
+.circuit-workspace {
+  @apply flex flex-col;
+  min-width: 600px;
+}
+
+.canvas-container {
+  @apply flex-1 relative overflow-auto bg-gray-50;
+  min-width: 800px;
+  min-height: calc(100vh - 192px); /* Adjust for header + toolbar + footer */
+}
+
+/* Footer styles */
+.circuit-footer {
+  @apply bg-white border-t p-2 flex justify-center items-center gap-2;
+  min-height: 48px;
+}
+
+/* Zoom controls styles */
+.zoom-controls {
+  @apply fixed bottom-4 right-4 flex items-center gap-2 bg-white rounded-lg shadow-md p-2;
+  z-index: 50;
+}
+
+.zoom-controls button {
+  @apply p-1.5 rounded transition-colors;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.zoom-controls span {
+  @apply px-2 py-1 bg-gray-50 rounded text-sm font-medium;
+  min-width: 60px;
+}
+
+/* Ensure the SVG maintains its dimensions */
+.circuit-container svg {
+  @apply w-full h-full;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+body {
+  @apply overflow-x-hidden;
+}
+
+/* Add these styles for the text input */
+.circuit-container input[type="text"] {
+  position: absolute;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: 14px;
+  color: black;
+  z-index: 1000;
+}
+
+.circuit-container input[type="text"]:focus {
+  outline: none;
+}
+
+/* Chat Box Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-box-animation {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Ensure chat box stays above other elements */
+.chat-container {
+  z-index: 1000;
+}

@@ -38,6 +38,7 @@ interface CircuitState {
   snipEnd: Point | null;
   isTextMode: boolean;
   isPanMode: boolean;
+  isPanToolActive: boolean;
 
   // Actions
   selectComponent: (id: string | null) => void;
@@ -72,6 +73,7 @@ interface CircuitState {
   captureSnip: () => void;
   toggleTextMode: () => void;
   togglePanMode: () => void;
+  togglePanTool: () => void;
 }
 
 export const useCircuitStore = create<CircuitState>((set, get) => ({
@@ -97,6 +99,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   snipEnd: null,
   isTextMode: false,
   isPanMode: false,
+  isPanToolActive: false,
 
   selectComponent: (id) => set({ selectedComponent: id }),
   
@@ -634,6 +637,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     }
     return { isPanMode: false };
   }),
+
+  togglePanTool: () => set(state => ({ isPanToolActive: !state.isPanToolActive })),
 }));
 
 // Helper function to find connected components

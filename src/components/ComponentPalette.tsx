@@ -33,6 +33,7 @@ const ComponentPalette: React.FC = () => {
     { type: 'resistor', icon: Hash, label: 'Resistor', defaultValue: '1kΩ' },
     { type: 'capacitor', icon: Circle, label: 'Capacitor', defaultValue: '1µF' },
     { type: 'inductor', icon: Codesandbox, label: 'Inductor', defaultValue: '1mH' },
+    { type: 'voltage_source', icon: Battery, label: 'Voltage Source', defaultValue: '5V' },
     { type: 'ac_source', icon: Waves, label: 'AC Source', defaultValue: '120V' },
     { type: 'dc_source', icon: BatteryCharging, label: 'DC Source', defaultValue: '5V' },
     { type: 'ground', icon: Zap, label: 'Ground' },
