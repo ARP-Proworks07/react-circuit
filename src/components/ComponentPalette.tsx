@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCircuitStore } from '../store/circuitStore';
 import { 
   Battery, 
@@ -33,7 +33,6 @@ const ComponentPalette: React.FC = () => {
     { type: 'resistor', icon: Hash, label: 'Resistor', defaultValue: '1kΩ' },
     { type: 'capacitor', icon: Circle, label: 'Capacitor', defaultValue: '1µF' },
     { type: 'inductor', icon: Codesandbox, label: 'Inductor', defaultValue: '1mH' },
-    { type: 'voltage_source', icon: Battery, label: 'Voltage Source', defaultValue: '5V' },
     { type: 'ac_source', icon: Waves, label: 'AC Source', defaultValue: '120V' },
     { type: 'dc_source', icon: BatteryCharging, label: 'DC Source', defaultValue: '5V' },
     { type: 'ground', icon: Zap, label: 'Ground' },
@@ -45,33 +44,30 @@ const ComponentPalette: React.FC = () => {
     { type: 'text', icon: Type, label: 'Text', defaultValue: 'Text' },
   ];
 
-  const handleComponentClick = (component: ComponentItem) => {
-    if (component.type === 'wire') {
-      toggleWireMode(); // Toggle wire mode
-    } else if (component.type === 'text') {
-      toggleTextMode(); // Toggle text mode
-    } else {
-      addComponent(component.type, component.defaultValue);
-    }
-  };
-
   return (
     <div className="w-64 bg-white border-r h-full flex flex-col">
       <div className="p-4 border-b">
         <h3 className="text-lg font-semibold">Components</h3>
       </div>
 
-      <div className="border-b" style={{ height: '300px' }}>
-        <div className="h-full overflow-y-auto p-4">
-          <div className="space-y-2">
+      <div className="px-4 py-2 flex-1">
+        <div className="border rounded-lg h-[400px] overflow-y-auto">
+          <div className="space-y-2 p-2">
             {components.map((component) => (
               <button
                 key={component.type}
-                onClick={() => handleComponentClick(component)}
+                onClick={() => {
+                  if (component.type === 'wire') {
+                    toggleWireMode();
+                  } else if (component.type === 'text') {
+                    toggleTextMode();
+                  } else {
+                    addComponent(component.type, component.defaultValue);
+                  }
+                }}
                 className={`w-full flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors ${
-                  (component.type === 'wire' && wireMode) || 
-                  (component.type === 'text' && isTextMode) 
-                    ? 'bg-blue-100 text-blue-700' 
+                  (component.type === 'wire' && wireMode) || (component.type === 'text' && isTextMode)
+                    ? 'bg-blue-100 text-blue-700'
                     : ''
                 }`}
               >

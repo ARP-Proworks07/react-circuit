@@ -2,13 +2,11 @@ import React from 'react';
 import CircuitCanvas from './components/CircuitCanvas';
 import ComponentPalette from './components/ComponentPalette';
 import { GRID_SIZE } from './types/Circuit';
+import { GitBranch } from 'lucide-react';
 
 const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen w-full">
-      {/* Blank space of exactly 1 grid row */}
-      <div style={{ height: `${GRID_SIZE}px` }} className="bg-white" />
-
       {/* Header Section */}
       <div className="bg-white border-b">
         <div className="flex items-center gap-3 h-12 px-4 relative">
@@ -25,8 +23,22 @@ const App: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        <ComponentPalette />
-        <CircuitCanvas />
+        {/* Component Palette with Scrollable Area */}
+        <div className="component-palette-container">
+          <div className="p-4 border-b">
+            <h3 className="text-lg font-semibold">Components</h3>
+          </div>
+          
+          {/* Scrollable Component List */}
+          <div className="component-list-scroll">
+            <ComponentPalette />
+          </div>
+        </div>
+
+        {/* Canvas with Scrollbars */}
+        <div className="canvas-scroll-container">
+          <CircuitCanvas />
+        </div>
       </div>
     </div>
   );

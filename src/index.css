@@ -362,3 +362,34 @@ body {
 .chat-container {
   z-index: 1000;
 }
+
+/* Component Palette Container */
+.component-palette-container {
+  @apply h-screen border-r bg-white;
+  width: 256px;
+  min-width: 256px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Component List Scroll Area */
+.component-list-scroll {
+  @apply overflow-y-auto overflow-x-auto flex-1;
+  height: calc(100vh - 116px); /* Adjust for header only */
+  min-height: 200px;
+}
+
+/* Canvas Container */
+.canvas-scroll-container {
+  @apply relative flex-1;
+  overflow: auto;
+  height: calc(100vh - 64px); /* Adjust for header */
+}
+
+/* Circuit Container */
+.circuit-container {
+  @apply bg-white rounded-lg shadow-lg;
+  min-width: 1200px;
+  min-height: 800px;
+  padding: 20px;
+}
