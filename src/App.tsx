@@ -5,38 +5,45 @@ import { GRID_SIZE } from './types/Circuit';
 import { GitBranch } from 'lucide-react';
 
 const App: React.FC = () => {
+  React.useEffect(() => {
+    const handleResize = () => {
+      const isSmall = window.innerWidth <= window.screen.width / 2;
+      document.documentElement.setAttribute('data-small', isSmall.toString());
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Initial check
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   return (
-    <div className="flex flex-col h-screen w-full">
-      {/* Header Section */}
-      <div className="bg-white border-b">
-        <div className="flex items-center gap-3 h-12 px-4 relative">
-          <div className="absolute left-4">
-            <div className="w-10 h-10 bg-blue-500 rounded flex items-center justify-center text-white font-bold">
+    <div className="flex flex-col h-screen w-full min-w-0 min-h-0">
+      {/* Header Section - Responsive height */}
+      <div className="bg-white border-b flex-shrink-0">
+        <div className="flex items-center gap-3 h-12 px-4 relative header-container">
+          <div className="absolute left-4 md:static">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-500 rounded flex items-center justify-center text-white font-bold logo-container">
               CD
             </div>
           </div>
-          <h1 className="text-xl font-semibold text-gray-800 flex-1 text-center">
+          <h1 className="text-lg md:text-xl font-semibold text-gray-800 flex-1 text-center header-title">
             Circuit Designer
           </h1>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Component Palette with Scrollable Area */}
+      {/* Main Content - Flexible height */}
+      <div className="flex flex-1 overflow-hidden min-w-0 min-h-0">
         <div className="component-palette-container">
-          <div className="p-4 border-b">
-            <h3 className="text-lg font-semibold">Components</h3>
-          </div>
-          
-          {/* Scrollable Component List */}
-          <div className="component-list-scroll">
+          <div className="component-list-scroll flex-1 overflow-y-auto">
             <ComponentPalette />
           </div>
         </div>
 
-        {/* Canvas with Scrollbars */}
-        <div className="canvas-scroll-container">
+        <div className="canvas-scroll-container flex-1 min-w-0">
           <CircuitCanvas />
         </div>
       </div>

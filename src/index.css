@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Base styles */
 .terminal {
   cursor: crosshair;
   transition: fill 150ms ease-out;
@@ -17,6 +18,7 @@
 
 .component-controls {
   transition: opacity 150ms ease-out;
+  @apply z-30;
 }
 
 /* Smooth rotation animation */
@@ -24,111 +26,178 @@ g[transform*="rotate"] {
   transition: transform 150ms ease-out;
 }
 
-/* Add these responsive styles */
-@media (max-width: 768px) {
-  .circuit-container {
-    touch-action: none; /* Prevents default touch behaviors on mobile */
-  }
-
-  /* Adjust component controls for touch devices */
-  .component-controls circle {
-    r: 12; /* Larger touch targets on mobile */
-  }
-
-  /* Make terminals easier to tap */
-  .terminal {
-    r: 6;
-  }
+/* Layout Components */
+.circuit-layout {
+  @apply flex h-screen min-h-screen overflow-hidden min-w-0;
 }
 
-/* Ensure the layout doesn't break on very small screens */
-@media (max-width: 480px) {
-  .toolbar-button {
-    padding: 0.5rem;
-  }
-  
-  .zoom-control {
-    min-width: 40px;
-  }
+.component-palette-container {
+  @apply h-full border-r bg-white flex flex-col;
+  width: 256px;
+  min-width: 48px;  /* Minimum width to show icons */
+  transition: width 0.3s ease;
+}
+
+.canvas-scroll-container {
+  @apply relative flex-1 overflow-auto min-w-0 min-h-0;
+  height: 100%;
+}
+
+.circuit-container {
+  @apply bg-white rounded-lg shadow-lg w-full h-full flex flex-col;
+  min-width: 100%;
+  min-height: 100%;
 }
 
 /* Toolbar Styles */
+.toolbar-container {
+  @apply bg-white shadow-sm border-b flex items-center p-2 md:p-4 flex-shrink-0;
+  min-height: 64px;
+}
+
 .toolbar-btn {
-  @apply flex items-center justify-center gap-1 px-2 py-1.5 rounded 
-  hover:bg-opacity-90 transition-colors duration-150 text-sm whitespace-nowrap;
+  @apply flex items-center gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded transition-colors whitespace-nowrap text-sm md:text-base;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  @apply fixed flex items-center gap-2 bg-white rounded-lg shadow-md p-2;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 50;
+}
+
+.zoom-controls button {
+  @apply p-1.5 rounded transition-colors;
   min-width: 32px;
   min-height: 32px;
 }
 
-/* Toolbar Responsive Styles */
-@media (max-width: 768px) {
-  .toolbar-btn {
-    @apply px-2 py-1;
-  }
-  
-  .toolbar-btn svg {
-    @apply w-4 h-4;
-  }
+/* Component List */
+.component-list-scroll {
+  @apply overflow-y-auto overflow-x-hidden flex-1;
+  min-height: 0;
 }
 
-@media (max-width: 480px) {
-  .toolbar-btn {
-    @apply min-w-[32px] justify-center;
-  }
+/* Chat Container */
+.chat-container {
+  z-index: 1000;
 }
 
-/* Add responsive layout styles */
-@layer components {
+/* Responsive Styles */
+@media (max-width: 1280px) {
   .circuit-layout {
-    @apply flex flex-col md:flex-row h-screen overflow-hidden;
+    width: fit-content;
   }
+}
 
-  .circuit-sidebar {
-    @apply w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r;
-  }
-
-  .circuit-workspace {
-    @apply flex-1 flex flex-col min-w-0;
+@media (max-width: 768px) {
+  .component-palette-container {
+    width: 200px;
   }
 
   .toolbar-container {
-    @apply flex-shrink-0;
+    padding: 0.5rem;
   }
 
-  .canvas-container {
-    @apply flex-1 min-h-0 relative overflow-hidden;
+  .toolbar-btn {
+    padding: 0.375rem 0.5rem;
+  }
+
+  .toolbar-btn span {
+    display: none;
+  }
+
+  .zoom-controls {
+    bottom: 0.5rem;
+    right: 0.5rem;
+    padding: 0.25rem;
+  }
+
+  .zoom-controls button {
+    padding: 0.25rem;
+  }
+
+  .component-controls circle {
+    r: 12;
+  }
+
+  .terminal {
+    r: 6;
+  }
+
+  .chat-container {
+    max-width: 300px;
+  }
+
+  .chat-box {
+    max-height: 300px;
+  }
+
+  .validation-panel {
+    max-width: 300px;
   }
 }
 
-/* Responsive adjustments */
+/* Responsive Component Palette */
+@media (max-width: 768px) {
+  .component-palette-container {
+    width: 200px;
+  }
+}
+
 @media (max-width: 640px) {
-  .toolbar-btn {
-    @apply p-1.5;
+  .component-palette-container {
+    width: 160px;
+  }
+}
+
+/* Chat and Validation Panels */
+.chat-container,
+.validation-panel {
+  @apply fixed bottom-4 right-4 bg-white rounded-lg shadow-lg;
+  max-width: 400px;
+  z-index: 1000;
+}
+
+@media (max-width: 768px) {
+  .chat-container,
+  .validation-panel {
+    @apply bottom-2 right-2;
+    max-width: calc(100vw - 180px);
+  }
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  @apply fixed flex items-center gap-2 bg-white rounded-lg shadow-md p-2;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 50;
+}
+
+@media (max-width: 768px) {
+  .zoom-controls {
+    @apply bottom-2 right-2 p-1 gap-1;
+  }
+
+  .zoom-controls button {
+    @apply p-1;
     min-width: 28px;
     min-height: 28px;
   }
-
-  .circuit-container svg {
-    @apply touch-none;
-  }
 }
 
-/* Medium screens */
-@media (min-width: 641px) and (max-width: 1024px) {
-  .toolbar-btn {
-    @apply px-2 py-1.5;
-  }
-}
-
-/* Large screens */
-@media (min-width: 1025px) {
-  .toolbar-btn {
-    @apply px-3 py-2;
-  }
-}
-
-/* Improve touch targets on mobile devices */
+/* Touch Device Optimizations */
 @media (pointer: coarse) {
+  .terminal {
+    r: 6;
+  }
+
+  .component-controls circle {
+    r: 12;
+  }
+
   .toolbar-btn {
     @apply min-h-[40px] min-w-[40px];
   }
@@ -139,257 +208,130 @@ g[transform*="rotate"] {
   @apply truncate;
 }
 
-/* Enable scrolling for the entire application */
+/* Base HTML/Body styles */
 html, body {
-  @apply h-screen w-screen overflow-auto;
-  min-width: 1024px; /* Minimum width before horizontal scroll appears */
-}
-
-/* Main Layout */
-.circuit-layout {
-  @apply flex h-screen min-h-screen;
-  min-width: 1024px;
-}
-
-/* Component Palette */
-.component-palette {
-  @apply w-64 border-r bg-white flex flex-col;
-  min-width: 256px;
-  height: 100vh;
-  position: sticky;
-  top: 0;
-  left: 0;
-}
-
-/* Main Workspace */
-.circuit-workspace {
-  @apply flex-1 flex flex-col;
-  min-width: 600px;
-}
-
-/* Toolbar Container */
-.toolbar-container {
-  @apply bg-white p-4 shadow-sm border-b;
-  position: sticky;
-  top: 0;
-  z-index: 40;
-}
-
-/* Canvas Container */
-.canvas-container {
-  @apply flex-1 relative overflow-auto bg-gray-50;
-  width: 800px;
-  min-height: calc(100vh - 128px);
-}
-
-/* Circuit Container */
-.circuit-container {
-  @apply w-full h-full;
-  min-width: 100%;
-  min-height: 100%;
-}
-
-/* Component List in Palette */
-.component-list {
-  @apply overflow-y-auto;
-  height: calc(100vh - 200px);
-}
-
-/* Wire Instructions */
-.wire-instructions {
-  @apply p-4 border-t bg-white;
-  position: sticky;
-  bottom: 0;
-}
-
-/* Ensure buttons and controls stay visible */
-.toolbar-btn {
-  @apply whitespace-nowrap;
-}
-
-/* Maintain component visibility */
-.component-controls {
-  @apply z-30;
-}
-
-/* Handle touch devices */
-@media (pointer: coarse) {
-  .toolbar-btn {
-    @apply min-h-[40px] min-w-[40px];
-  }
-  
-  .terminal {
-    r: 6;
-  }
+  @apply h-screen w-screen overflow-hidden;
+  overscroll-behavior: none;
 }
 
 /* Responsive adjustments */
-@media (max-width: 1280px) {
-  html, body {
-    @apply overflow-x-auto;
-  }
-  
-  .circuit-layout {
-    width: fit-content;
-  }
-}
+@media (max-height: 600px) and (min-height: 1px) {
+  html[data-resizing="true"] {
+    .component-palette-container {
+      width: 48px;
+    }
 
-/* Add styles for the header */
-.circuit-header {
-  @apply bg-white border-b p-4;
-  min-height: 64px; /* Adjust as needed */
-}
+    .component-label {
+      display: none;
+    }
 
-/* Adjust workspace layout */
-.circuit-workspace {
-  @apply flex-1 flex flex-col;
-  width: fit-content;
-}
+    .component-palette-container button {
+      @apply justify-center;
+      padding: 0.5rem;
+      min-width: 48px;
+    }
 
-/* Ensure toolbar maintains its position */
-.toolbar-container {
-  @apply bg-white p-4 shadow-sm border-b flex justify-between items-center;
-  min-height: 64px;
-}
+    .palette-header h3 {
+      display: none;
+    }
 
-/* Adjust canvas container to account for header */
-.canvas-container {
-  @apply flex-1 relative overflow-auto bg-gray-50;
-  min-width: 800px;
-  min-height: calc(100vh - 192px); /* Adjust based on header + toolbar height */
-}
-
-/* Header styles */
-.header {
-  @apply bg-white border-b p-4;
-  min-height: 64px;
-}
-
-/* Main layout adjustments */
-.circuit-layout {
-  @apply flex h-[calc(100vh-64px)] overflow-hidden;
-  width: fit-content;
-}
-
-/* Update other responsive styles to account for header height */
-.canvas-container {
-  @apply flex-1 relative overflow-auto bg-gray-50;
-  min-width: 800px;
-  min-height: calc(100vh - 128px); /* Adjusted for header */
-}
-
-/* Add footer styles */
-.circuit-workspace {
-  @apply flex flex-col;
-  min-width: 600px;
-}
-
-.canvas-container {
-  @apply flex-1 relative overflow-auto bg-gray-50;
-  min-width: 800px;
-  min-height: calc(100vh - 192px); /* Adjust for header + toolbar + footer */
-}
-
-/* Footer styles */
-.circuit-footer {
-  @apply bg-white border-t p-2 flex justify-center items-center gap-2;
-  min-height: 48px;
-}
-
-/* Zoom controls styles */
-.zoom-controls {
-  @apply fixed bottom-4 right-4 flex items-center gap-2 bg-white rounded-lg shadow-md p-2;
-  z-index: 50;
-}
-
-.zoom-controls button {
-  @apply p-1.5 rounded transition-colors;
-  min-width: 32px;
-  min-height: 32px;
-}
-
-.zoom-controls span {
-  @apply px-2 py-1 bg-gray-50 rounded text-sm font-medium;
-  min-width: 60px;
-}
-
-/* Ensure the SVG maintains its dimensions */
-.circuit-container svg {
-  @apply w-full h-full;
-  min-width: 100%;
-  min-height: 100%;
-}
-
-body {
-  @apply overflow-x-hidden;
-}
-
-/* Add these styles for the text input */
-.circuit-container input[type="text"] {
-  position: absolute;
-  background: transparent;
-  border: none;
-  outline: none;
-  padding: 0;
-  margin: 0;
-  font-family: inherit;
-  font-size: 14px;
-  color: black;
-  z-index: 1000;
-}
-
-.circuit-container input[type="text"]:focus {
-  outline: none;
-}
-
-/* Chat Box Animations */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    .wire-tool-info {
+      display: none;
+    }
   }
 }
 
-.chat-box-animation {
-  animation: slideIn 0.3s ease-out;
+@media (max-height: 400px) and (min-height: 1px) {
+  html[data-resizing="true"] {
+    .toolbar-container {
+      min-height: 36px;
+    }
+
+    .component-palette-container {
+      width: 40px;
+      min-width: 40px;
+    }
+
+    .component-palette-container button {
+      min-width: 40px;
+      min-height: 28px;
+    }
+  }
 }
 
-/* Ensure chat box stays above other elements */
-.chat-container {
-  z-index: 1000;
+@media (max-width: 640px) {
+  .component-palette-container {
+    width: 160px;
+  }
+
+  .toolbar-container {
+    @apply p-1.5;
+    min-height: 56px;
+  }
+
+  .toolbar-btn {
+    @apply px-2 py-1.5;
+    min-width: 32px;
+    min-height: 32px;
+  }
 }
 
-/* Component Palette Container */
+/* Hide component labels when window is half the size or less */
+html[data-small="true"] .component-label {
+  display: none;
+}
+
+/* Show component labels when window is more than half the size */
+html[data-small="false"] .component-label {
+  display: block;
+}
+
+/* Base styles for component palette */
 .component-palette-container {
-  @apply h-screen border-r bg-white;
+  @apply h-full border-r bg-white flex flex-col;
   width: 256px;
-  min-width: 256px;
-  display: flex;
-  flex-direction: column;
+  transition: width 0.3s ease;
 }
 
-/* Component List Scroll Area */
-.component-list-scroll {
-  @apply overflow-y-auto overflow-x-auto flex-1;
-  height: calc(100vh - 116px); /* Adjust for header only */
-  min-height: 200px;
+/* When window is small, show only icons */
+html[data-small="true"] .component-palette-container {
+  width: 48px;
+  
+  .component-label {
+    display: none;
+  }
+
+  .palette-header h3 {
+    display: none;
+  }
+
+  /* Move components to settings menu when very small */
+  &.collapsed {
+    width: 0;
+    overflow: hidden;
+    border: none;
+  }
 }
 
-/* Canvas Container */
-.canvas-scroll-container {
-  @apply relative flex-1;
-  overflow: auto;
-  height: calc(100vh - 64px); /* Adjust for header */
+/* Settings button styles */
+.settings-button {
+  @apply fixed left-4 bottom-4 z-50 bg-white rounded-full shadow-lg p-3;
+  display: none;
 }
 
-/* Circuit Container */
-.circuit-container {
-  @apply bg-white rounded-lg shadow-lg;
-  min-width: 1200px;
-  min-height: 800px;
-  padding: 20px;
+/* Settings menu styles */
+.settings-menu {
+  @apply fixed left-0 top-0 bottom-0 bg-white shadow-lg z-40;
+  width: 48px;
+  display: none;
+  
+  &.open {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Show settings button when window is very small */
+html[data-small="true"] .settings-button {
+  display: block;
 }

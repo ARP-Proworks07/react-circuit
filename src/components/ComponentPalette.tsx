@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCircuitStore } from '../store/circuitStore';
 import { 
   Battery, 
@@ -27,6 +27,11 @@ interface ComponentItem {
 
 const ComponentPalette: React.FC = () => {
   const { addComponent, toggleWireMode, wireMode, isTextMode, toggleTextMode } = useCircuitStore();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-minimized', isSettingsOpen.toString());
+  }, [isSettingsOpen]);
 
   const components: ComponentItem[] = [
     { type: 'wire' as ComponentType, icon: GitBranch, label: 'Wire Tool' },
@@ -45,58 +50,76 @@ const ComponentPalette: React.FC = () => {
   ];
 
   return (
-    <div className="w-64 bg-white border-r h-full flex flex-col">
-      <div className="p-4 border-b">
-        <h3 className="text-lg font-semibold">Components</h3>
-      </div>
-
-      <div className="px-4 py-2 flex-1">
-        <div className="border rounded-lg h-[400px] overflow-y-auto">
-          <div className="space-y-2 p-2">
-            {components.map((component) => (
-              <button
-                key={component.type}
-                onClick={() => {
-                  if (component.type === 'wire') {
-                    toggleWireMode();
-                  } else if (component.type === 'text') {
-                    toggleTextMode();
-                  } else {
-                    addComponent(component.type, component.defaultValue);
-                  }
-                }}
-                className={`w-full flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors ${
-                  (component.type === 'wire' && wireMode) || (component.type === 'text' && isTextMode)
-                    ? 'bg-blue-100 text-blue-700'
-                    : ''
-                }`}
-              >
-                <component.icon size={20} />
-                <span>{component.label}</span>
-              </button>
-            ))}
-          </div>
+    <>
+      <div className={`component-palette-container ${isSettingsOpen ? 'collapsed' : ''}`}>
+        <div className="p-2 md:p-4 border-b flex-shrink-0 palette-header">
+          <h3 className="text-base md:text-lg font-semibold">Components</h3>
+        </div>
+        
+        <div className="component-list-scroll flex-1 overflow-y-auto">
+          {components.map((component) => (
+            <button
+              key={component.type}
+              onClick={() => {
+                if (component.type === 'wire') {
+                  toggleWireMode();
+                } else if (component.type === 'text') {
+                  toggleTextMode();
+                } else {
+                  addComponent(component.type, component.defaultValue);
+                }
+              }}
+              className={`w-full flex items-center gap-2 p-1.5 md:p-2 hover:bg-gray-100 rounded transition-colors text-sm md:text-base ${
+                (component.type === 'wire' && wireMode) || (component.type === 'text' && isTextMode)
+                  ? 'bg-blue-100 text-blue-700'
+                  : ''
+              }`}
+              title={component.label}
+            >
+              <div className="flex-shrink-0 flex items-center justify-center" style={{ minWidth: '20px' }}>
+                <component.icon size={20} className="md:w-5 md:h-5" />
+              </div>
+              <span className="truncate component-label transition-opacity duration-200">
+                {component.label}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="p-4 mt-auto">
-        <div className="p-3 bg-blue-50 rounded-md">
-          <div className="flex items-center gap-2 text-blue-700 mb-2">
-            <GitBranch size={20} />
-            <span className="font-semibold">Wire Tool Usage</span>
-          </div>
-          <p className="text-sm text-blue-600">
-            To draw wires:
-            <ol className="list-decimal ml-4 mt-1">
-              <li>Click the Wire Tool button</li>
-              <li>Click to start drawing</li>
-              <li>Click to add corners</li>
-              <li>Press Enter to complete</li>
-            </ol>
-          </p>
-        </div>
+      {/* Settings button and menu for small screens */}
+      <button
+        className="settings-button"
+        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+        title={isSettingsOpen ? "Close Components" : "Open Components"}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
+          <path d="M12 6v12M6 12h12"/>
+        </svg>
+      </button>
+
+      <div className={`settings-menu ${isSettingsOpen ? 'open' : ''}`}>
+        {components.map((component) => (
+          <button
+            key={component.type}
+            onClick={() => {
+              if (component.type === 'wire') {
+                toggleWireMode();
+              } else if (component.type === 'text') {
+                toggleTextMode();
+              } else {
+                addComponent(component.type, component.defaultValue);
+              }
+            }}
+            className="p-2 hover:bg-gray-100"
+            title={component.label}
+          >
+            <component.icon size={20} />
+          </button>
+        ))}
       </div>
-    </div>
+    </>
   );
 };
 

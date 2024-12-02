@@ -21,6 +21,7 @@ import { Text } from './circuit/Text';
 import ChatBox from './ChatBox';
 import { ACSource } from './circuit/ACSource';
 import { DCSource } from './circuit/DCSource';
+import Toolbar from './Toolbar';
 
 
 const CircuitCanvas: React.FC = () => {
@@ -491,111 +492,25 @@ const CircuitCanvas: React.FC = () => {
         className="hidden"
       />
       
-      <div className="bg-white p-4 shadow-sm border-b flex justify-between items-center">
-        <div className="flex gap-2">
-          <button
-            onClick={undo}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            title="Undo (Ctrl+Z)"
-          >
-            <Undo2 size={18} />
-          </button>
-          <button
-            onClick={redo}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            title="Redo (Ctrl+Shift+Z)"
-          >
-            <Redo2 size={18} />
-          </button>
-          <button
-            onClick={toggleGrid}
-            className={`flex items-center gap-2 px-3 py-2 ${
-              showGrid ? 'bg-blue-500 text-white' : 'bg-gray-200'
-            } rounded hover:bg-opacity-90`}
-          >
-            <Grid size={18} /> Grid
-          </button>
-          <button
-            onClick={validateCircuit}
-            className="flex items-center gap-2 px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-          >
-            Validate
-          </button>
-          <button
-            onClick={saveDesign}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            <Save size={18} /> Save
-          </button>
-          <button
-            onClick={handleLoadClick}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            <Download size={18} /> Load
-          </button>
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            <FileDown size={18} /> Export
-          </button>
-          <button
-            onClick={clearDesign}
-            className="flex items-center gap-2 px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-          >
-            <Trash2 size={18} /> Clear
-          </button>
-          <button
-            onClick={toggleSnippingMode}
-            className={`flex items-center gap-2 px-3 py-2 ${
-              isSnipping ? 'bg-blue-500 text-white' : 'bg-gray-200'
-            } rounded hover:bg-opacity-90`}
-            title="Snipping Tool"
-          >
-            <Scissors size={18} /> Snip
-          </button>
-          <button
-            onClick={togglePanTool}
-            className={`flex items-center gap-2 px-3 py-2 ${
-              isPanToolActive ? 'bg-blue-500 text-white' : 'bg-gray-200'
-            } rounded hover:bg-opacity-90`}
-            title="Pan Tool"
-          >
-            <Hand size={18} /> Pan
-          </button>
-          <div className="flex gap-2 items-center">
-            <button
-              onClick={handleZoomOut}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-              title="Zoom Out"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                <line x1="8" y1="11" x2="14" y2="11"/>
-              </svg>
-            </button>
+      <Toolbar
+        onUndo={undo}
+        onRedo={redo}
+        onToggleGrid={toggleGrid}
+        showGrid={showGrid}
+        onValidate={validateCircuit}
+        onSave={saveDesign}
+        onLoad={handleLoadClick}
+        onExport={handleExport}
+        onClear={clearDesign}
+        onToggleSnipping={toggleSnippingMode}
+        isSnipping={isSnipping}
+        onTogglePan={togglePanTool}
+        isPanToolActive={isPanToolActive}
+        zoomLevel={zoomLevel}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+      />
 
-            <span className="px-2 py-1 bg-gray-100 rounded text-sm font-medium min-w-[60px] text-center">
-              {Math.round(zoomLevel * 100)}%
-            </span>
-
-            <button
-              onClick={handleZoomIn}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-              title="Zoom In"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                <line x1="11" y1="8" x2="11" y2="14"/>
-                <line x1="8" y1="11" x2="14" y2="11"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-      
       <div className="flex-1 bg-gray-50 p-4 relative">
         <div className="circuit-container bg-white rounded-lg shadow-lg h-full p-4 overflow-hidden"
           onMouseDown={handlePanStart}
